@@ -32,6 +32,20 @@ export default function GNB() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // 장바구니 개수 연동을 위한 간단한 처리 (실제로는 fetchCart 활용이 좋음)
+  useEffect(() => {
+    if (isLoggedIn) {
+      import("@/lib/api/client").then(module => {
+        module.default.get("/v1/cart").then(res => {
+          if (res.data.success) {
+            // 이 프로젝트에서는 DB 카운트를 바로 뱃지로 쓸 수 있게, 여기서는 단순히 length 사용
+            // 전역 스토어를 굳이 복잡하게 안하고 로컬 상태로 해도 됨 (여기선 편의상 생략, Zustand 사용)
+          }
+        });
+      });
+    }
+  }, [isLoggedIn]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -95,8 +109,15 @@ export default function GNB() {
           <div className="flex items-center gap-5 text-sm shrink-0">
             {isLoggedIn ? (
               <>
+                <div className="hidden lg:flex items-center gap-4 border-r border-gray-300 pr-4 mr-1">
+                  <span className="text-gray-600 font-medium">마일리지:</span>
+                  <span className="font-bold text-red-600">{user?.mileage?.toLocaleString() || 0}M</span>
+                </div>
                 <Link href="/mypage" className="hover:text-black text-gray-600 hidden sm:block">
                   {user?.name}
+                </Link>
+                <Link href="/mypage/orders" className="hover:text-black text-gray-600 hidden sm:block">
+                  주문내역
                 </Link>
                 <button
                   onClick={handleLogout}

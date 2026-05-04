@@ -75,7 +75,19 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           </div>
 
           <div className="mt-auto space-y-4">
-            <button className="w-full h-14 border-2 border-black text-black font-bold text-lg hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={async () => {
+                try {
+                  const res = await apiClient.post("/v1/cart", { productId: product.id, quantity: 1 });
+                  if (res.data.success) {
+                    alert("장바구니에 담겼습니다.");
+                  }
+                } catch {
+                  alert("장바구니 담기에 실패했습니다 (로그인이 필요할 수 있습니다).");
+                }
+              }}
+              className="w-full h-14 border-2 border-black text-black font-bold text-lg hover:bg-gray-50 transition-colors"
+            >
               장바구니 담기
             </button>
             <button className="w-full h-14 bg-black text-white font-bold text-lg hover:bg-gray-800 transition-colors">

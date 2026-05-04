@@ -43,6 +43,9 @@ public class User {
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
+    @Column(nullable = false)
+    private Integer mileage = 0;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -59,6 +62,7 @@ public class User {
         this.phone = phone;
         this.role = role != null ? role : "ROLE_USER";
         this.isActive = true;
+        this.mileage = 0;
     }
 
     public void updatePassword(String password) {
@@ -75,5 +79,12 @@ public class User {
 
     public void deactivate() {
         this.isActive = false;
+    }
+
+    public void addMileage(int amount) {
+        if (this.mileage == null) {
+            this.mileage = 0;
+        }
+        this.mileage += amount;
     }
 }

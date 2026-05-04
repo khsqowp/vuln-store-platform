@@ -30,6 +30,7 @@ export interface User {
   role: UserRole;
   profileImageUrl?: string;
   isActive: boolean;
+  mileage?: number;
   createdAt: string;
 }
 

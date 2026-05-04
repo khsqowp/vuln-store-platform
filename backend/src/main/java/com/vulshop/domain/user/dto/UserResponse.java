@@ -13,6 +13,7 @@ public class UserResponse {
     private String phone;
     private String role;
     private String profileImageUrl;
+    private Integer mileage;
 
     public static UserResponse from(User user) {
         return UserResponse.builder()
@@ -22,6 +23,7 @@ public class UserResponse {
                 .phone(user.getPhone())
                 .role(user.getRole())
                 .profileImageUrl(user.getProfileImageUrl())
+                .mileage(user.getMileage())
                 .build();
     }
 }
