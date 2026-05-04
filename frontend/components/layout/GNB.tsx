@@ -9,13 +9,12 @@ import { useCartStore } from "@/lib/store/cart";
 const categories = [
   { label: "NEW", href: "/products?sort=newest" },
   { label: "BEST", href: "/products?sort=best" },
-  { label: "아우터", href: "/products?category=outer" },
-  { label: "상의", href: "/products?category=top" },
-  { label: "하의", href: "/products?category=bottom" },
-  { label: "신발", href: "/products?category=shoes" },
-  { label: "가방", href: "/products?category=bag" },
-  { label: "액세서리", href: "/products?category=accessory" },
-  { label: "스포츠", href: "/products?category=sports" },
+  { label: "아우터", href: "/category/outer" },
+  { label: "상의", href: "/category/top" },
+  { label: "하의", href: "/category/bottom" },
+  { label: "신발", href: "/category/shoes" },
+  { label: "가방", href: "/category/bag" },
+  { label: "COMMUNITY", href: "/community", className: "font-bold text-blue-600" },
   { label: "세일", href: "/products?sort=sale", className: "text-red-600 font-bold" },
 ];
 
