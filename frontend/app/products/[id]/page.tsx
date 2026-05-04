@@ -3,7 +3,6 @@
 import { useEffect, useState, use } from "react";
 import apiClient from "@/lib/api/client";
 import Link from "next/link";
-import ProductCard from "@/components/product/ProductCard";
 
 interface ProductData {
   id: number;

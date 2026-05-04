@@ -15,6 +15,10 @@ const categories = [
   { label: "신발", href: "/category/shoes" },
   { label: "가방", href: "/category/bag" },
   { label: "COMMUNITY", href: "/community", className: "font-bold text-blue-600" },
+  { label: "EVENT", href: "/event", className: "font-bold text-purple-600" },
+  { label: "고객센터", href: "/cs" },
+  { label: "판매자신청", href: "/seller/apply" },
+  { label: "쿠폰", href: "/coupon" },
   { label: "세일", href: "/products?sort=sale", className: "text-red-600 font-bold" },
 ];
 

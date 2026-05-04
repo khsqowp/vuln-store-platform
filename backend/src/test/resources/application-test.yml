@@ -16,6 +16,10 @@ spring:
   flyway:
     enabled: false
 
+  sql:
+    init:
+      mode: never
+
 jwt:
   secret: VulShop2024!ThisIsASecretKeyForTestingPurposeOnly!
   access-token-expiry: 1800000

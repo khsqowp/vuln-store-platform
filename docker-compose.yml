@@ -47,7 +47,7 @@ services:
     container_name: vulshop-frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://nginx/api
+      NEXT_PUBLIC_API_URL: http://localhost/api
     ports:
       - "3000:3000"
     depends_on:
