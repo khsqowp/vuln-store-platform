@@ -1,0 +1,46 @@
+# 1. 시스템 및 OS 관련 파일
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 2. IDE 및 에디터 설정
+# VS Code
+.vscode/
+# IntelliJ / WebStorm (JetBrains)
+.idea/
+*.iml
+
+# 3. 보안 파일 (가장 중요: 절대 커밋 금지)
+.env
+.env.local
+*.pem
+*.key
+secret.json
+credentials.json
+
+# 4. 의존성 및 패키지 설치 디렉토리 (용량 방지)
+node_modules/
+venv/
+env/
+.venv/
+jspm_packages/
+target/
+build/
+dist/
+out/
+
+# 5. 빌드 결과물 및 로그
+*.log
+*.tmp
+*.bak
+dist/
+build/
+*.class
+*.exe
+*.dll
+
+# 6. 환경별 캐시
+__pycache__/
+.cache/
+.eslintcache
+.pytest_cache/
