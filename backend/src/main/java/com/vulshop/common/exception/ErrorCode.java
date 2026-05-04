@@ -13,6 +13,7 @@ public enum ErrorCode {
     NOT_FOUND(HttpStatus.NOT_FOUND, "C004", "리소스를 찾을 수 없습니다"),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "C005", "접근 권한이 없습니다"),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "C006", "인증이 필요합니다"),
+    BAD_REQUEST(HttpStatus.BAD_REQUEST, "C007", "잘못된 요청입니다"),
 
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "존재하지 않는 사용자입니다"),
