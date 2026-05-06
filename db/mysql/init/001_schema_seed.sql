@@ -177,13 +177,23 @@ BEGIN
       SET product_code_value = CONCAT('p-', category_name, '-', LPAD(i, 3, '0'));
       SET brand_name = ELT(1 + MOD(i, 10), 'NOMADIC', 'AURORA', 'GROUND', 'ORDINARY', 'SEASON', 'FRAME', 'RUNNER', 'STREET', 'MINUTE', 'COTTON WORKS');
       SET product_name_value = CONCAT(
+        ELT(1 + MOD(i, 10), '시티', '에센셜', '컴포트', '모던', '데일리', '프리미엄', '릴랙스', '클래식', '소프트', '유틸리티'),
+        ' ',
+        CASE category_name
+          WHEN 'outer' THEN ELT(1 + MOD(i * 3, 10), '나일론', '코튼', '트윌', '라이트 쉘', '워시드', '테크', '울 블렌드', '립스탑', '미니멀', '헤비 코튼')
+          WHEN 'top' THEN ELT(1 + MOD(i * 3, 10), '수피마 코튼', '헤비웨이트', '피케', '와플', '브러시드', '프렌치 테리', '옥스포드', '쿨 터치', '소프트 니트', '바이오 워싱')
+          WHEN 'pants' THEN ELT(1 + MOD(i * 3, 10), '코튼 트윌', '워시드 데님', '스트레치', '나일론', '코어 스판', '피치 코튼', '테크 원단', '린넨 블렌드', '헤비 캔버스', '소프트 기모')
+          ELSE ELT(1 + MOD(i * 3, 10), '레더', '메시', '캔버스', '스웨이드', '러버솔', '니트 어퍼', '트레일', '코트', '러닝 쿠션', '빈티지')
+        END,
+        ' ',
         CASE category_name
           WHEN 'outer' THEN ELT(1 + MOD(i, 8), '라이트웨이트 블루종', '싱글 트렌치 코트', '니트 집업 가디건', '유틸리티 베스트', '윈드 쉘 재킷', '코튼 필드 재킷', '후드 파카', '워크 재킷')
           WHEN 'top' THEN ELT(1 + MOD(i, 8), '오버핏 셔츠', '후드 스웨트셔츠', '그래픽 티셔츠', '니트 풀오버', '롱슬리브 티셔츠', '카라 티셔츠', '하프 집업 맨투맨', '옥스포드 셔츠')
           WHEN 'pants' THEN ELT(1 + MOD(i, 8), '카고 팬츠', '와이드 데님 팬츠', '크롭 슬랙스', '밴딩 조거 팬츠', '치노 팬츠', '원턱 와이드 팬츠', '워크 데님 팬츠', '나일론 팬츠')
           ELSE ELT(1 + MOD(i, 8), '로우 스니커즈', '러닝 스니커즈', '캔버스 스니커즈', '테크 스니커즈', '레트로 스니커즈', '코트 스니커즈', '트레일 스니커즈', '슬립온 스니커즈')
         END,
-        ' ', LPAD(i, 2, '0')
+        ' ',
+        ELT(1 + MOD(i * 5 + category_index, 10), '블랙', '차콜', '네이비', '애쉬 카키', '크림', '스톤 그레이', '더스티 블루', '오트밀', '인디고', '샌드')
       );
       SET product_price = 24000 + MOD(i * 7300 + category_index * 11000, 118000);
       SET product_discount = 10 + MOD(i * 7 + category_index, 31);
@@ -207,10 +217,10 @@ BEGIN
       SELECT id INTO product_id_value FROM products WHERE product_code = product_code_value LIMIT 1;
 
       INSERT IGNORE INTO product_images (product_id, image_url, image_type, sort_order) VALUES
-      (product_id_value, CONCAT('https://loremflickr.com/900/1125/', CASE category_name WHEN 'outer' THEN 'jacket' WHEN 'top' THEN 'shirt' WHEN 'pants' THEN 'pants' ELSE 'sneakers' END, ',fashion?lock=', (category_index * 100 + i * 4 + 1)), 'MAIN', 1),
-      (product_id_value, CONCAT('https://loremflickr.com/900/1125/', CASE category_name WHEN 'outer' THEN 'jacket' WHEN 'top' THEN 'shirt' WHEN 'pants' THEN 'pants' ELSE 'sneakers' END, ',fashion?lock=', (category_index * 100 + i * 4 + 2)), 'DETAIL', 2),
-      (product_id_value, CONCAT('https://loremflickr.com/900/1125/', CASE category_name WHEN 'outer' THEN 'jacket' WHEN 'top' THEN 'shirt' WHEN 'pants' THEN 'pants' ELSE 'sneakers' END, ',fashion?lock=', (category_index * 100 + i * 4 + 3)), 'DETAIL', 3),
-      (product_id_value, CONCAT('https://loremflickr.com/900/1125/', CASE category_name WHEN 'outer' THEN 'jacket' WHEN 'top' THEN 'shirt' WHEN 'pants' THEN 'pants' ELSE 'sneakers' END, ',fashion?lock=', (category_index * 100 + i * 4 + 4)), 'DETAIL', 4);
+      (product_id_value, CONCAT('/api/product-images/', product_code_value, '/0.svg'), 'MAIN', 1),
+      (product_id_value, CONCAT('/api/product-images/', product_code_value, '/1.svg'), 'DETAIL', 2),
+      (product_id_value, CONCAT('/api/product-images/', product_code_value, '/2.svg'), 'DETAIL', 3),
+      (product_id_value, CONCAT('/api/product-images/', product_code_value, '/3.svg'), 'DETAIL', 4);
 
       INSERT IGNORE INTO reviews (product_id, nickname, rating, body, image_url, created_at) VALUES
       (product_id_value, CONCAT('핏체크', product_code_value, '-001'), 4.8, CONCAT(product_name_value, ' 실착감이 좋고 데일리로 입기 편합니다.'), CONCAT('https://loremflickr.com/800/800/fashion,person?lock=', (category_index * 1000 + i * 3 + 1)), DATE_SUB(NOW(), INTERVAL i DAY)),

@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile.prod
     ports:
-      - "80:80"
+      - "${WEB_PORT:-10080}:80"
     depends_on:
       - app
     networks:
@@ -17,10 +17,12 @@ services:
   app:
     build:
       context: ./shop
+    ports:
+      - "${BACKEND_PORT:-18100}:${SERVER_PORT:-8100}"
     env_file:
       - .env
     environment:
-      SERVER_PORT: 8100
+      SERVER_PORT: ${SERVER_PORT:-8100}
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/vulshop?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
@@ -40,6 +42,8 @@ services:
   db:
     image: mysql:8.4
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports:
+      - "${MYSQL_PORT:-13306}:3306"
     env_file:
       - .env
     environment:
@@ -63,7 +67,6 @@ services:
 networks:
   public-net:
   private-net:
-    internal: true
 
 volumes:
   mysql-data:

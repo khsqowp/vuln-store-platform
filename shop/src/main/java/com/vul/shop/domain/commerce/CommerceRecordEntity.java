@@ -30,7 +30,7 @@ public class CommerceRecordEntity {
 	private String status;
 
 	@Lob
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "LONGTEXT")
 	private String payloadJson;
 
 	@Column(nullable = false)

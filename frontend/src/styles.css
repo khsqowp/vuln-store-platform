@@ -1010,6 +1010,36 @@ p {
   font-size: 12px;
 }
 
+.adminTableRow em,
+.adminTable em {
+  justify-self: start;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #4b5565;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.adminTableRow em.statusDanger,
+.adminTable em.statusDanger {
+  background: #fff1f0;
+  color: #d92d20;
+}
+
+.adminTableRow em.statusWarning,
+.adminTable em.statusWarning {
+  background: #fff7e6;
+  color: #b54708;
+}
+
+.adminTableRow em.statusSuccess,
+.adminTable em.statusSuccess {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
 .adminTable button {
   display: grid;
   grid-template-columns: 44px 1fr auto;

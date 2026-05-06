@@ -263,13 +263,22 @@ public class CustomerApiController {
 		return accepted("Product detail API surface is ready.", payload);
 	}
 
+	@GetMapping(value = "/product-images/{productCode}/{variant}.svg", produces = "image/svg+xml")
+	public String productImage(@PathVariable String productCode, @PathVariable int variant, HttpServletResponse response) {
+		ProductEntity product = products.findByProductCode(productCode).orElse(null);
+		String category = product == null ? "top" : product.getCategory();
+		String name = product == null ? productCode : product.getName();
+		response.setHeader("Cache-Control", "public, max-age=86400");
+		return generatedProductSvg(category, name, Math.abs(productCode.hashCode()), variant);
+	}
+
 	@GetMapping("/search")
 	public ApiResponse<List<Map<String, Object>>> search(@RequestParam String keyword, @RequestParam(required = false) String sort, @RequestParam(required = false) String order) {
 		return products(keyword, null, null, null, null, null, null, sort == null ? "recommended" : sort, order == null ? "asc" : order);
 	}
 
 	@GetMapping("/cart")
-	public ApiResponse<List<CommerceRecordEntity>> cart(@RequestParam(defaultValue = "member@vulshop.local") String userEmail) {
+	public ApiResponse<List<CommerceRecordEntity>> cart(@RequestParam String userEmail) {
 		return accepted("Cart query API surface is ready.", commerceRecords.findByDomainTypeAndOwnerKeyOrderByCreatedAtDesc("CART", userEmail));
 	}
 
@@ -315,9 +324,16 @@ public class CustomerApiController {
 		)));
 		payload.put("chargedAmount", clientPaymentTotal);
 		payload.put("useMileage", useMileage);
+		payload.put("deliveryCompany", payload.getOrDefault("deliveryCompany", "CJ대한통운"));
+		payload.put("trackingNumber", payload.getOrDefault("trackingNumber", "5849-1204-7721"));
+		String initialStatus = "card".equals(String.valueOf(request.get("paymentMethod")))
+			|| Boolean.parseBoolean(String.valueOf(request.getOrDefault("depositConfirmed", "false")))
+			? "PAYMENT_COMPLETED"
+			: "ORDER_RECEIVED";
+		payload.put("status", initialStatus);
 		payload.put("completionRedirect", "/order/success?orderId=" + payload.getOrDefault("orderId", "ORDER-" + Instant.now().toEpochMilli()) + "&amount=" + clientPaymentTotal + "&userId=" + payload.getOrDefault("userId", payload.getOrDefault("userEmail", "")));
 		payload.put("diagnosticNote", "VULN-013 stores the client supplied payment amount as the charged amount. VULN-030 accepts non-atomic stock deduction. VULN-036 accepts useMileage without balance verification.");
-		return accepted("Checkout API surface is ready.", commerceRecords.save(record("ORDER", payload, "ORDER_RECEIVED")));
+		return accepted("Checkout API surface is ready.", commerceRecords.save(record("ORDER", payload, initialStatus)));
 	}
 
 	@GetMapping("/orders/complete")
@@ -332,7 +348,7 @@ public class CustomerApiController {
 	}
 
 	@GetMapping("/orders")
-	public ApiResponse<List<CommerceRecordEntity>> myOrders(@RequestParam(defaultValue = "member@vulshop.local") String userEmail) {
+	public ApiResponse<List<CommerceRecordEntity>> myOrders(@RequestParam String userEmail) {
 		return accepted("Order history API surface is ready.", commerceRecords.findByDomainTypeAndOwnerKeyOrderByCreatedAtDesc("ORDER", userEmail));
 	}
 
@@ -399,7 +415,7 @@ public class CustomerApiController {
 	}
 
 	@GetMapping("/mileage")
-	public ApiResponse<List<CommerceRecordEntity>> mileage(@RequestParam(defaultValue = "member@vulshop.local") String userEmail) {
+	public ApiResponse<List<CommerceRecordEntity>> mileage(@RequestParam String userEmail) {
 		return accepted("Mileage API surface is ready.", commerceRecords.findByDomainTypeAndOwnerKeyOrderByCreatedAtDesc("MILEAGE", userEmail));
 	}
 
@@ -600,7 +616,7 @@ public class CustomerApiController {
 	}
 
 	@PostMapping(value = "/files/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	public ApiResponse<CommerceRecordEntity> uploadFile(@RequestParam MultipartFile file, @RequestParam(defaultValue = "community") String usage, @RequestParam(defaultValue = "member@vulshop.local") String userEmail) {
+	public ApiResponse<CommerceRecordEntity> uploadFile(@RequestParam MultipartFile file, @RequestParam(defaultValue = "community") String usage, @RequestParam String userEmail) {
 		Map<String, Object> payload = nullableMap(
 			"usage", usage,
 			"userEmail", userEmail,
@@ -629,11 +645,6 @@ public class CustomerApiController {
 
 	@GetMapping("/seller/orders")
 	public ApiResponse<List<CommerceRecordEntity>> sellerOrders(@RequestParam(defaultValue = "seller@vulshop.local") String sellerEmail) {
-		seedSellerCommerceRecords("SELLER_ORDER", sellerEmail, List.of(
-			Map.of("orderNo", "PART-20260506-001", "productName", "파트너 오버핏 재킷", "amount", 129000, "status", "PREPARING_PRODUCT"),
-			Map.of("orderNo", "PART-20260505-014", "productName", "파트너 와이드 팬츠", "amount", 78000, "status", "SHIPPING"),
-			Map.of("orderNo", "PART-20260504-008", "productName", "파트너 로우 스니커즈", "amount", 99000, "status", "DELIVERED")
-		));
 		return accepted("Seller orders are ready.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("SELLER_ORDER").stream()
 			.filter(record -> sellerEmail.equals(record.getOwnerKey()))
 			.toList());
@@ -648,10 +659,6 @@ public class CustomerApiController {
 
 	@GetMapping("/seller/settlements")
 	public ApiResponse<List<CommerceRecordEntity>> sellerSettlements(@RequestParam(defaultValue = "seller@vulshop.local") String sellerEmail) {
-		seedSellerCommerceRecords("SELLER_SETTLEMENT", sellerEmail, List.of(
-			Map.of("settlementNo", "SETTLE-202605-W1", "amount", 286000, "status", "SCHEDULED"),
-			Map.of("settlementNo", "SETTLE-202604-W4", "amount", 412000, "status", "CONFIRMED")
-		));
 		return accepted("Seller settlements are ready.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("SELLER_SETTLEMENT").stream()
 			.filter(record -> sellerEmail.equals(record.getOwnerKey()))
 			.toList());
@@ -694,17 +701,54 @@ public class CustomerApiController {
 		return values;
 	}
 
+	private String getFashionKeyword(String name, String category) {
+		String lower = name.toLowerCase();
+		if (lower.contains("블루종")) return "blouson,jacket";
+		if (lower.contains("트렌치")) return "trenchcoat";
+		if (lower.contains("가디건")) return "cardigan";
+		if (lower.contains("베스트")) return "vest";
+		if (lower.contains("파카") || lower.contains("점퍼")) return "parka,outerwear";
+		if (lower.contains("재킷") || lower.contains("자켓")) return "jacket";
+		if (lower.contains("셔츠")) return "shirt";
+		if (lower.contains("후드") || lower.contains("맨투맨") || lower.contains("스웨트")) return "hoodie";
+		if (lower.contains("티셔츠")) return "tshirt";
+		if (lower.contains("니트") || lower.contains("풀오버")) return "sweater";
+		if (lower.contains("카고")) return "cargopants";
+		if (lower.contains("데님") || lower.contains("청바지")) return "denim,jeans";
+		if (lower.contains("슬랙스")) return "trousers";
+		if (lower.contains("조거")) return "joggers";
+		if (lower.contains("팬츠") || lower.contains("바지")) return "pants";
+		if (lower.contains("러닝") || lower.contains("런닝")) return "running-shoes";
+		if (lower.contains("캔버스")) return "canvas-shoes";
+		if (lower.contains("스니커즈")) return "sneakers";
+		
+		return switch (category.toLowerCase()) {
+			case "outer" -> "jacket";
+			case "top" -> "shirt";
+			case "pants" -> "pants";
+			case "sneakers" -> "sneakers";
+			default -> "fashion";
+		};
+	}
+
 	private Map<String, Object> productMap(ProductEntity product) {
-		List<String> images = product.getImages().stream()
-			.sorted(Comparator.comparing(ProductImageEntity::getSortOrder))
-			.map(ProductImageEntity::getImageUrl)
-			.toList();
-		String image = images.isEmpty() ? "" : images.get(0);
+		String id = product.getProductCode();
+		String name = product.getName();
+		String category = product.getCategory();
+		List<String> images = List.of(
+			productImageUrl(id, 0),
+			productImageUrl(id, 1),
+			productImageUrl(id, 2),
+			productImageUrl(id, 3)
+		);
+
+		String image = images.get(0);
+
 		return nullableMap(
-			"id", product.getProductCode(),
-			"category", product.getCategory(),
+			"id", id,
+			"category", category,
 			"brand", product.getBrand(),
-			"name", product.getName(),
+			"name", name,
 			"price", product.getPrice(),
 			"originalPrice", product.getOriginalPrice(),
 			"discount", product.getDiscountRate(),
@@ -753,19 +797,14 @@ public class CustomerApiController {
 
 	private Map<String, Object> productRowMap(Map<String, Object> row) {
 		String id = stringColumn(row, "id");
+		String name = stringColumn(row, "name");
 		String category = stringColumn(row, "category");
-		String kw = "fashion";
-		if (category.equalsIgnoreCase("outer")) kw = "jacket";
-		else if (category.equalsIgnoreCase("top")) kw = "shirt";
-		else if (category.equalsIgnoreCase("pants")) kw = "pants";
-		else if (category.equalsIgnoreCase("sneakers")) kw = "sneakers";
-		
-		int seed = Math.abs(id.hashCode());
-		String image = "https://loremflickr.com/900/1125/" + kw + ",fashion?lock=" + (seed % 1000);
+		String image = productImageUrl(id, 0);
 		List<String> detailImages = List.of(
 			image,
-			"https://loremflickr.com/900/1125/" + kw + ",fashion?lock=" + ((seed + 1) % 1000),
-			"https://loremflickr.com/900/1125/" + kw + ",fashion?lock=" + ((seed + 2) % 1000)
+			productImageUrl(id, 1),
+			productImageUrl(id, 2),
+			productImageUrl(id, 3)
 		);
 
 		return nullableMap(
@@ -783,6 +822,37 @@ public class CustomerApiController {
 			"detailImages", detailImages,
 			"description", stringColumn(row, "description")
 		);
+	}
+
+	private static String productImageUrl(String productCode, int variant) {
+		return "/api/product-images/" + productCode + "/" + variant + ".svg";
+	}
+
+	private static String generatedProductImage(String category, String label, int seed, int variant) {
+		return "data:image/svg+xml;base64," + Base64.getEncoder().encodeToString(generatedProductSvg(category, label, seed, variant).getBytes(StandardCharsets.UTF_8));
+	}
+
+	private static String generatedProductSvg(String category, String label, int seed, int variant) {
+		String[] light = {"#f4f7fb", "#f6f1e8", "#eef7f1", "#f7f0f5"};
+		String[] accent = {"#0064ff", "#0f8b8d", "#ff6b35", "#7c3aed"};
+		String[] dark = {"#111318", "#1f2937", "#202124", "#171923"};
+		int idx = Math.abs(seed + variant) % light.length;
+		String shape = switch (category == null ? "" : category) {
+			case "outer" -> "<path d=\"M315 255h270l95 160-75 55-42-76v320H337V394l-42 76-75-55 95-160z\" fill=\"" + accent[idx] + "\" opacity=\".88\"/><path d=\"M405 255h90l38 120H367z\" fill=\"#fff\" opacity=\".7\"/>";
+			case "pants" -> "<path d=\"M350 255h200l45 455H485l-35-300-35 300H305z\" fill=\"" + accent[idx] + "\" opacity=\".88\"/><path d=\"M350 255h200v92H350z\" fill=\"#fff\" opacity=\".48\"/>";
+			case "sneakers" -> "<path d=\"M245 570c80 22 146 12 210-38 62 72 135 105 240 96 28 18 45 41 50 68H230c-20-44-15-84 15-126z\" fill=\"" + accent[idx] + "\" opacity=\".9\"/><path d=\"M300 640h390\" stroke=\"#fff\" stroke-width=\"22\" stroke-linecap=\"round\" opacity=\".75\"/>";
+			default -> "<path d=\"M330 260h240l95 98-70 84-45-52v310H350V390l-45 52-70-84 95-98z\" fill=\"" + accent[idx] + "\" opacity=\".88\"/><path d=\"M405 260h90l-20 74h-50z\" fill=\"#fff\" opacity=\".72\"/>";
+		};
+		String safeLabel = String.valueOf(label).replace("<", "").replace(">", "").replace("&", "");
+		String svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"900\" height=\"1125\" viewBox=\"0 0 900 1125\">"
+			+ "<rect width=\"900\" height=\"1125\" fill=\"" + light[idx] + "\"/>"
+			+ "<circle cx=\"730\" cy=\"190\" r=\"" + (70 + variant * 10) + "\" fill=\"" + accent[idx] + "\" opacity=\".16\"/>"
+			+ "<rect x=\"95\" y=\"120\" width=\"710\" height=\"885\" rx=\"34\" fill=\"#fff\"/>"
+			+ "<g>" + shape + "</g>"
+			+ "<text x=\"450\" y=\"900\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"31\" font-weight=\"800\" fill=\"" + dark[idx] + "\">" + safeLabel + "</text>"
+			+ "<text x=\"450\" y=\"950\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#697386\">VUL SHOP</text>"
+			+ "</svg>";
+		return svg;
 	}
 
 	private static String stringColumn(Map<String, Object> row, String key) {
@@ -926,25 +996,11 @@ public class CustomerApiController {
 	}
 
 	private static String owner(Map<String, Object> request) {
-		return String.valueOf(request.getOrDefault("userEmail", request.getOrDefault("email", "member@vulshop.local")));
-	}
-
-	private void seedSellerCommerceRecords(String domainType, String sellerEmail, List<Map<String, Object>> rows) {
-		boolean exists = commerceRecords.findByDomainTypeOrderByCreatedAtDesc(domainType).stream()
-			.anyMatch(record -> sellerEmail.equals(record.getOwnerKey()));
-		if (exists) {
-			return;
-		}
-		for (int i = 0; i < rows.size(); i += 1) {
-			Map<String, Object> row = new LinkedHashMap<>(rows.get(i));
-			String status = String.valueOf(row.getOrDefault("status", "READY"));
-			String key = String.valueOf(row.getOrDefault("orderNo", row.getOrDefault("settlementNo", domainType + "-" + (i + 1))));
-			commerceRecords.save(CommerceRecordEntity.create(domainType, sellerEmail, key, status, row));
-		}
+		return String.valueOf(request.getOrDefault("userEmail", request.getOrDefault("email", "UNKNOWN")));
 	}
 
 	private Map<String, Object> authSample(Map<String, Object> request) {
-		String email = String.valueOf(request.getOrDefault("email", request.getOrDefault("username", "member@vulshop.local")));
+		String email = String.valueOf(request.getOrDefault("email", request.getOrDefault("username", "UNKNOWN")));
 		return nullableMap(
 			"request", request,
 			"accessToken", createJwt(email),

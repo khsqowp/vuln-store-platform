@@ -176,11 +176,6 @@ public class AdminApiController {
 
 	@GetMapping("/inventory")
 	public ApiResponse<List<CommerceRecordEntity>> inventory() {
-		seedIfEmpty("INVENTORY", List.of(
-			Map.of("sku", "OUTER-024", "stock", 12, "warehouse", "A-01", "status", "LOW_STOCK"),
-			Map.of("sku", "TOP-041", "stock", 88, "warehouse", "B-12", "status", "NORMAL"),
-			Map.of("sku", "SNEAKERS-009", "stock", 0, "warehouse", "C-07", "status", "SOLD_OUT")
-		));
 		return ApiResponse.accepted("Inventory management data loaded.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("INVENTORY"));
 	}
 
@@ -191,11 +186,6 @@ public class AdminApiController {
 
 	@GetMapping("/employees")
 	public ApiResponse<List<CommerceRecordEntity>> employees() {
-		seedIfEmpty("EMPLOYEE", List.of(
-			Map.of("email", "ops@vul.com", "team", "운영", "role", "CS_MANAGER", "status", "ACTIVE"),
-			Map.of("email", "md@vul.com", "team", "상품", "role", "PRODUCT_MANAGER", "status", "ACTIVE"),
-			Map.of("email", "security@vul.com", "team", "보안", "role", "AUDITOR", "status", "ACTIVE")
-		));
 		return ApiResponse.accepted("Employee management data loaded.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("EMPLOYEE"));
 	}
 
@@ -214,14 +204,6 @@ public class AdminApiController {
 
 	@GetMapping("/orders")
 	public ApiResponse<List<CommerceRecordEntity>> orders() {
-		seedIfEmpty("ORDER", List.of(
-			Map.of("orderNo", "ORDER-20260506-001", "userEmail", "user@vul.com", "amount", 89000, "status", "ORDER_RECEIVED"),
-			Map.of("orderNo", "ORDER-20260506-002", "userEmail", "member@vulshop.local", "amount", 129000, "status", "PAYMENT_COMPLETED")
-		));
-		seedIfEmpty("SETTLEMENT", List.of(
-			Map.of("sellerEmail", "part@vul.com", "amount", 286000, "status", "SCHEDULED"),
-			Map.of("sellerEmail", "seller@vulshop.local", "amount", 412000, "status", "CONFIRMED")
-		));
 		List<CommerceRecordEntity> result = new ArrayList<>(commerceRecords.findByDomainTypeOrderByCreatedAtDesc("ORDER"));
 		result.addAll(commerceRecords.findByDomainTypeOrderByCreatedAtDesc("SETTLEMENT"));
 		return ApiResponse.accepted("Order and settlement management data loaded.", result);
@@ -236,10 +218,6 @@ public class AdminApiController {
 
 	@GetMapping("/settlements")
 	public ApiResponse<List<CommerceRecordEntity>> settlements() {
-		seedIfEmpty("SETTLEMENT", List.of(
-			Map.of("sellerEmail", "part@vul.com", "amount", 286000, "status", "SCHEDULED"),
-			Map.of("sellerEmail", "seller@vulshop.local", "amount", 412000, "status", "CONFIRMED")
-		));
 		return ApiResponse.accepted("Settlement management API surface is ready.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("SETTLEMENT"));
 	}
 
@@ -288,54 +266,22 @@ public class AdminApiController {
 
 	@GetMapping("/analytics/users")
 	public ApiResponse<List<CommerceRecordEntity>> userAnalytics() {
-		seedIfEmpty("USER_ANALYTICS", List.of(
-			Map.of("metric", "dailyActiveUsers", "value", 1284, "change", "+8.2%"),
-			Map.of("metric", "cartAbandonRate", "value", "41%", "change", "-2.1%"),
-			Map.of("metric", "searchConversion", "value", "7.4%", "change", "+0.9%")
-		));
 		return ApiResponse.accepted("User behavior analytics data loaded.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("USER_ANALYTICS"));
 	}
 
 	@GetMapping("/system/roles")
 	public ApiResponse<List<CommerceRecordEntity>> roles() {
-		seedIfEmpty("ROLE_POLICY", List.of(
-			Map.of("role", "ADMIN", "scope", "all", "status", "ACTIVE"),
-			Map.of("role", "SELLER", "scope", "seller-products", "status", "ACTIVE"),
-			Map.of("role", "USER", "scope", "member-actions", "status", "ACTIVE")
-		));
 		return ApiResponse.accepted("Permission management data loaded.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("ROLE_POLICY"));
 	}
 
 	@GetMapping("/system/audit-logs")
 	public ApiResponse<List<CommerceRecordEntity>> auditLogs() {
-		seedIfEmpty("AUDIT_LOG", List.of(
-			Map.of("actor", "root@vul.com", "action", "PARTNER_APPROVE", "target", "part@vul.com"),
-			Map.of("actor", "root@vul.com", "action", "ORDER_STATUS_CHANGE", "target", "sample-order"),
-			Map.of("actor", "system", "action", "JWT_SECRET_LOADED", "target", "shopkey123")
-		));
 		return ApiResponse.accepted("Audit log data loaded.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("AUDIT_LOG"));
 	}
 
 	@GetMapping("/system/security-settings")
 	public ApiResponse<List<CommerceRecordEntity>> securitySettings() {
-		seedIfEmpty("SECURITY_SETTING", List.of(
-			Map.of("key", "jwt.secret", "value", "shopkey123", "status", "WEAK_BY_DESIGN"),
-			Map.of("key", "admin.debug.header", "value", "X-Debug-Admin", "status", "DIAGNOSTIC"),
-			Map.of("key", "upload.validation", "value", "weak-extension-check", "status", "DIAGNOSTIC")
-		));
 		return ApiResponse.accepted("Security settings data loaded.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("SECURITY_SETTING"));
-	}
-
-	private void seedIfEmpty(String domainType, List<Map<String, Object>> rows) {
-		if (!commerceRecords.findByDomainTypeOrderByCreatedAtDesc(domainType).isEmpty()) {
-			return;
-		}
-		for (int i = 0; i < rows.size(); i += 1) {
-			Map<String, Object> row = new LinkedHashMap<>(rows.get(i));
-			String ownerKey = String.valueOf(row.getOrDefault("email", row.getOrDefault("actor", "admin")));
-			String status = String.valueOf(row.getOrDefault("status", "ACTIVE"));
-			commerceRecords.save(CommerceRecordEntity.create(domainType, ownerKey, domainType.toLowerCase() + "-" + (i + 1), status, row));
-		}
 	}
 
 	private static Map<String, Object> fetchUrlProbe(String value) {

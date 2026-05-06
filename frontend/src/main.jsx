@@ -266,51 +266,95 @@ const categoryNameParts = {
 
 const categoryBrands = ['NOMADIC', 'AURORA', 'GROUND', 'ORDINARY', 'SEASON', 'FRAME', 'RUNNER', 'STREET', 'MINUTE', 'COTTON WORKS'];
 
+const productNameModifiers = ['시티', '에센셜', '컴포트', '모던', '데일리', '프리미엄', '릴랙스', '클래식', '소프트', '유틸리티'];
+const productNameMaterials = {
+  outer: ['나일론', '코튼', '트윌', '라이트 쉘', '워시드', '테크', '울 블렌드', '립스탑', '미니멀', '헤비 코튼'],
+  top: ['수피마 코튼', '헤비웨이트', '피케', '와플', '브러시드', '프렌치 테리', '옥스포드', '쿨 터치', '소프트 니트', '바이오 워싱'],
+  pants: ['코튼 트윌', '워시드 데님', '스트레치', '나일론', '코어 스판', '피치 코튼', '테크 원단', '린넨 블렌드', '헤비 캔버스', '소프트 기모'],
+  sneakers: ['레더', '메시', '캔버스', '스웨이드', '러버솔', '니트 어퍼', '트레일', '코트', '러닝 쿠션', '빈티지'],
+};
+const productNameColors = ['블랙', '차콜', '네이비', '애쉬 카키', '크림', '스톤 그레이', '더스티 블루', '오트밀', '인디고', '샌드'];
 
-function remoteFashionImage(category, index, variant = 0, width = 900, height = 1125) {
-  const keywords = {
+
+function getFashionKeyword(name, category) {
+  const lower = name.toLowerCase();
+  if (lower.includes('블루종')) return 'blouson,jacket';
+  if (lower.includes('트렌치')) return 'trenchcoat';
+  if (lower.includes('가디건')) return 'cardigan';
+  if (lower.includes('베스트')) return 'vest';
+  if (lower.includes('파카') || lower.includes('점퍼')) return 'parka,outerwear';
+  if (lower.includes('재킷') || lower.includes('자켓')) return 'jacket';
+  if (lower.includes('셔츠')) return 'shirt';
+  if (lower.includes('후드') || lower.includes('맨투맨') || lower.includes('스웨트')) return 'hoodie';
+  if (lower.includes('티셔츠')) return 'tshirt';
+  if (lower.includes('니트') || lower.includes('풀오버')) return 'sweater';
+  if (lower.includes('카고')) return 'cargopants';
+  if (lower.includes('데님') || lower.includes('청바지')) return 'denim,jeans';
+  if (lower.includes('슬랙스')) return 'trousers';
+  if (lower.includes('조거')) return 'joggers';
+  if (lower.includes('팬츠') || lower.includes('바지')) return 'pants';
+  if (lower.includes('러닝') || lower.includes('런닝')) return 'running-shoes';
+  if (lower.includes('캔버스')) return 'canvas-shoes';
+  if (lower.includes('스니커즈')) return 'sneakers';
+
+  const categoryKeywords = {
     outer: 'jacket,outerwear',
     top: 'shirt,top',
     pants: 'pants,trousers',
     sneakers: 'sneakers,shoes',
   };
-  const kw = keywords[category] || 'fashion';
-  // Use a unique seed for each product and its variants
-  const seed = (index + 1) * 20 + variant;
-  return `https://loremflickr.com/${width}/${height}/${kw},fashion?lock=${seed}`;
+  return categoryKeywords[category] || 'fashion';
 }
 
-function generatedFashionImage(category, label, index, variant = 0) {
+function remoteFashionImage(category, name, identifier, variant = 0, width = 900, height = 1125) {
+  let numericSeed = 0;
+  const idStr = String(identifier);
+  for (let i = 0; i < idStr.length; i++) {
+    numericSeed = (numericSeed << 5) - numericSeed + idStr.charCodeAt(i);
+  }
+  return generatedFashionImage(category, name || category, Math.abs(numericSeed) % 10000, variant, width, height);
+}
+
+function generatedFashionImage(category, label, index, variant = 0, width = 900, height = 1125) {
   const palettes = [
-    ['#111318', '#f4f7fb', '#0064ff'],
-    ['#263238', '#eef8f3', '#11a36a'],
-    ['#4a2f23', '#fff7ed', '#ff7a1a'],
-    ['#2f3440', '#f2f0ff', '#6c5ce7'],
-    ['#1f2937', '#f8fafc', '#ef4444'],
-    ['#0f172a', '#ecfeff', '#0891b2'],
+    { light: '#f4f7fb', accent: '#0064ff', dark: '#111318' },
+    { light: '#f6f1e8', accent: '#0f8b8d', dark: '#1f2937' },
+    { light: '#eef7f1', accent: '#ff6b35', dark: '#202124' },
+    { light: '#f7f0f5', accent: '#7c3aed', dark: '#171923' },
   ];
-  const [dark, light, accent] = palettes[(index + variant) % palettes.length];
-  const categoryShape = {
-    outer: `<path d="M255 285 L330 220 H570 L645 285 L595 430 V805 H305 V430 Z" fill="${dark}"/><path d="M390 235 L450 350 L510 235" fill="${light}" opacity=".9"/>`,
-    top: `<path d="M285 275 L370 220 H530 L615 275 L575 385 L530 360 V805 H370 V360 L325 385 Z" fill="${dark}"/><rect x="390" y="300" width="120" height="240" rx="24" fill="${accent}" opacity=".24"/>`,
-    pants: `<path d="M350 230 H550 L585 805 H490 L450 430 L410 805 H315 Z" fill="${dark}"/><path d="M450 250 V805" stroke="${light}" stroke-width="12" opacity=".6"/>`,
-    sneakers: `<path d="M230 610 C360 580 450 615 545 555 C610 620 690 650 760 665 L735 735 H250 C210 730 200 650 230 610 Z" fill="${dark}"/><path d="M320 640 H610" stroke="${accent}" stroke-width="18" stroke-linecap="round"/>`,
-  }[category];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1125" viewBox="0 0 900 1125"><rect width="900" height="1125" fill="${light}"/><circle cx="730" cy="190" r="${70 + variant * 10}" fill="${accent}" opacity=".16"/><rect x="95" y="120" width="710" height="885" rx="34" fill="#fff"/><g>${categoryShape}</g><text x="450" y="910" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="800" fill="${dark}">${label}</text><text x="450" y="958" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#697386">VUL SHOP ${String(index + 1).padStart(3, '0')}</text></svg>`;
+  const { light, accent, dark } = palettes[(index + variant) % palettes.length];
+  const shapes = {
+    outer: `<path d="M315 255h270l95 160-75 55-42-76v320H337V394l-42 76-75-55 95-160z" fill="${accent}" opacity=".88"/><path d="M405 255h90l38 120H367z" fill="#fff" opacity=".7"/>`,
+    top: `<path d="M330 260h240l95 98-70 84-45-52v310H350V390l-45 52-70-84 95-98z" fill="${accent}" opacity=".88"/><path d="M405 260h90l-20 74h-50z" fill="#fff" opacity=".72"/>`,
+    pants: `<path d="M350 255h200l45 455H485l-35-300-35 300H305z" fill="${accent}" opacity=".88"/><path d="M350 255h200v92H350z" fill="#fff" opacity=".48"/>`,
+    sneakers: `<path d="M245 570c80 22 146 12 210-38 62 72 135 105 240 96 28 18 45 41 50 68H230c-20-44-15-84 15-126z" fill="${accent}" opacity=".9"/><path d="M300 640h390" stroke="#fff" stroke-width="22" stroke-linecap="round" opacity=".75"/>`,
+  };
+  const categoryShape = shapes[category] || shapes.top;
+  const safeLabel = String(label).replace(/[<>&]/g, '');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 900 1125"><rect width="900" height="1125" fill="${light}"/><circle cx="730" cy="190" r="${70 + variant * 10}" fill="${accent}" opacity=".16"/><rect x="95" y="120" width="710" height="885" rx="34" fill="#fff"/><g>${categoryShape}</g><text x="450" y="900" text-anchor="middle" font-family="Arial, sans-serif" font-size="31" font-weight="800" fill="${dark}">${safeLabel}</text><text x="450" y="950" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#697386">VUL SHOP</text></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
+function shouldReplaceImageUrl(url) {
+  return !url || /images\.unsplash\.com|loremflickr\.com|picsum\.photos/i.test(url);
+}
+
 function withDetailImages(product, index) {
-  const seed = index ?? product.rank ?? product.id?.length ?? 1;
-  const image = product.image || remoteFashionImage(product.category, seed, 0);
+  const id = product.id || index || product.rank || 1;
+  const name = product.name || '';
+  const image = shouldReplaceImageUrl(product.image)
+    ? remoteFashionImage(product.category, name, id, 0)
+    : product.image;
+  const existingDetails = Array.isArray(product.detailImages) ? product.detailImages : [];
+  const hasUsableDetails = existingDetails.length > 0 && existingDetails.every((url) => !shouldReplaceImageUrl(url));
   return {
     ...product,
     image,
-    detailImages: product.detailImages || [
-      remoteFashionImage(product.category, seed, 1),
-      remoteFashionImage(product.category, seed, 2),
-      remoteFashionImage(product.category, seed, 3),
-      remoteFashionImage(product.category, seed, 4),
+    detailImages: hasUsableDetails ? existingDetails : [
+      remoteFashionImage(product.category, name, id, 1),
+      remoteFashionImage(product.category, name, id, 2),
+      remoteFashionImage(product.category, name, id, 3),
+      remoteFashionImage(product.category, name, id, 4),
     ],
   };
 }
@@ -319,11 +363,14 @@ function createGeneratedProduct(category, index, rankOffset) {
   const names = categoryNameParts[category];
   const price = 24000 + ((index * 7300) % 118000);
   const discount = 10 + ((index * 7) % 31);
+  const baseName = names[index % names.length];
+  const name = `${productNameModifiers[index % productNameModifiers.length]} ${productNameMaterials[category][(index * 3) % productNameMaterials[category].length]} ${baseName} ${productNameColors[(index * 5 + rankOffset) % productNameColors.length]}`;
+  const id = `p-${category}-${String(index + 1).padStart(3, '0')}`;
   return withDetailImages({
-    id: `p-${category}-${String(index + 1).padStart(3, '0')}`,
+    id,
     category,
     brand: categoryBrands[index % categoryBrands.length],
-    name: `${names[index % names.length]} ${String(index + 1).padStart(2, '0')}`,
+    name,
     price,
     originalPrice: Math.round(price / (1 - discount / 100) / 1000) * 1000,
     discount,
@@ -332,12 +379,12 @@ function createGeneratedProduct(category, index, rankOffset) {
     rank: rankOffset + index,
     tags: index % 3 === 0 ? ['recommend', 'sale'] : index % 3 === 1 ? ['ranking'] : ['event'],
     description: `${names[index % names.length]} 특유의 안정적인 핏과 데일리 활용도를 갖춘 상품입니다. 카테고리별 추천 상품으로 상세 이미지와 함께 확인할 수 있습니다.`,
-    image: remoteFashionImage(category, index, 0),
+    image: remoteFashionImage(category, name, id, 0),
     detailImages: [
-      remoteFashionImage(category, index, 1),
-      remoteFashionImage(category, index, 2),
-      remoteFashionImage(category, index, 3),
-      remoteFashionImage(category, index, 4),
+      remoteFashionImage(category, name, id, 1),
+      remoteFashionImage(category, name, id, 2),
+      remoteFashionImage(category, name, id, 3),
+      remoteFashionImage(category, name, id, 4),
     ],
   }, index);
 }
@@ -382,7 +429,7 @@ function applyLiveRanks(items) {
     .sort((a, b) => a.rank - b.rank);
 }
 
-const products = applyLiveRanks(buildProducts());
+const products = [];
 
 const benefitItems = [
   '신규 회원 15% 쿠폰',
@@ -515,7 +562,7 @@ function createProductReviews(product, limit = 12) {
       nickname: `${reviewNickPrefixes[index % reviewNickPrefixes.length]}${serial}`,
       rating: Number((4.3 + ((index + product.rank) % 7) * 0.1).toFixed(1)),
       body: `${product.name} ${index + 1}번째 실착 후기입니다. ${fit}이고 ${color}. ${texture}이라 ${use}. 주문번호 기준 리뷰라 내용이 반복되지 않게 기록했습니다.`,
-      image: remoteFashionImage(product.category, product.rank + index, (index % 5) + 5),
+      image: remoteFashionImage(product.category, `${product.name} 리뷰`, `${product.id}-review-${index}`, (index % 5) + 5, 800, 800),
       createdAt: `${1 + ((index + product.rank) % 28)}일 전`,
     };
   });
@@ -591,7 +638,7 @@ function App() {
   const [catalogProducts, setCatalogProducts] = useState([]);
   const [communityPosts, setCommunityPosts] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [userCoupons, setUserCoupons] = useState([couponCatalog[1]]);
+  const [userCoupons, setUserCoupons] = useState([]);
   const [loginRedirect, setLoginRedirect] = useState('/mypage');
   const [lastOrderKey, setLastOrderKey] = useState(localStorage.getItem('vulshop.lastOrderKey') || '');
 
@@ -622,15 +669,14 @@ function App() {
       .then((response) => response.ok ? response.json() : null)
       .then((payload) => {
         if (payload?.data?.length) {
-          setCatalogProducts(applyLiveRanks(payload.data.map((product, index) => ({
+          setCatalogProducts(applyLiveRanks(payload.data.map((product, index) => withDetailImages({
             ...product,
             id: product.id || product.productCode || `api-${index}`,
             discount: product.discount ?? product.discountRate ?? 0,
             reviews: product.reviews ?? product.reviewCount ?? 0,
             rank: product.rank ?? product.ranking ?? index + 1,
-            detailImages: product.detailImages?.length ? product.detailImages : [product.image].filter(Boolean),
             tags: product.tags || ['recommend'],
-          }))));
+          }, index))));
         }
       })
       .catch(() => {});
@@ -964,7 +1010,7 @@ function RouteView({ path, query, navigate, catalogProducts, cart, wishlist, use
   }
 
   if (path === '/mypage') {
-    return user ? <MyPage user={user} cart={cart} wishlist={wishlist} coupons={userCoupons} navigate={navigate} logout={logout} /> : <LoginRequiredPage title="마이페이지는 회원 전용입니다" navigate={navigate} redirectTo="/mypage" setLoginRedirect={setLoginRedirect} />;
+    return user ? <MyPage user={user} cart={cart} wishlist={wishlist} coupons={userCoupons} catalogProducts={catalogProducts} navigate={navigate} logout={logout} /> : <LoginRequiredPage title="마이페이지는 회원 전용입니다" navigate={navigate} redirectTo="/mypage" setLoginRedirect={setLoginRedirect} />;
   }
 
   if (path === '/coupons') {
@@ -980,7 +1026,7 @@ function RouteView({ path, query, navigate, catalogProducts, cart, wishlist, use
   }
 
   if (path === '/reviews') {
-    return <ReviewPage navigate={navigate} />;
+    return <ReviewPage navigate={navigate} products={catalogProducts} />;
   }
 
   if (path === '/privacy') {
@@ -1287,7 +1333,7 @@ function ProductCard({ product, navigate, large = false, badge, showTrend = fals
   return (
     <article className={`productCard ${large ? 'large' : ''}`} onClick={() => navigate(`/products/${product.id}`)}>
       <div className="imageWrap">
-        <img src={product.image} alt={product.name} onError={(event) => { event.currentTarget.src = fallbackImage(product.name); }} />
+        <img loading="lazy" src={product.image} alt={product.name} onError={(event) => { event.currentTarget.src = fallbackImage(product.name); }} />
         {product.discount > 0 && <span className="discount">{product.discount}%</span>}
         {badge && <span className="rankBadge">{badge}</span>}
         {showTrend && <span className={`cardTrend ${product.trend}`}>{product.rankChange > 0 ? `▲ ${product.rankChange}` : product.rankChange < 0 ? `▼ ${Math.abs(product.rankChange)}` : '유지'}</span>}
@@ -1306,7 +1352,7 @@ function ProductCard({ product, navigate, large = false, badge, showTrend = fals
   );
 }
 
-function ProductDetail({ product, catalogProducts = products, navigate, addToCart, toggleWishlist, wished, requireLogin, user }) {
+function ProductDetail({ product, catalogProducts = [], navigate, addToCart, toggleWishlist, wished, requireLogin, user }) {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('info');
   const [inquiry, setInquiry] = useState('');
@@ -1335,7 +1381,7 @@ function ProductDetail({ product, catalogProducts = products, navigate, addToCar
           <img src={product.image} alt={product.name} onError={(event) => { event.currentTarget.src = fallbackImage(product.name); }} />
           <div className="detailMoreImages">
             {product.detailImages.map((image, index) => (
-              <img src={image} alt={`${product.name} 상세 ${index + 1}`} key={image} onError={(event) => { event.currentTarget.src = fallbackImage(product.name); }} />
+              <img loading="lazy" src={image} alt={`${product.name} 상세 ${index + 1}`} key={image} onError={(event) => { event.currentTarget.src = fallbackImage(product.name); }} />
             ))}
           </div>
         </div>
@@ -1409,7 +1455,7 @@ function ProductDetail({ product, catalogProducts = products, navigate, addToCar
   );
 }
 
-function ProductDetailTabs({ product, activeTab, setActiveTab, inquiry, setInquiry, inquiries, submitInquiry, requireLogin, user, navigate, catalogProducts = products }) {
+function ProductDetailTabs({ product, activeTab, setActiveTab, inquiry, setInquiry, inquiries, submitInquiry, requireLogin, user, navigate, catalogProducts = [] }) {
   const fallbackReviews = useMemo(() => createProductReviews(product, 16), [product]);
   const [reviews, setReviews] = useState(fallbackReviews);
   React.useEffect(() => {
@@ -1681,27 +1727,19 @@ function WishlistPage({ wishlist, navigate, toggleWishlist }) {
   );
 }
 
-function MyPage({ user, cart, wishlist, coupons, navigate, logout }) {
-  const purchaseItems = [
-    {
-      id: 'VUL-20260506-001',
-      product: products[0],
-      size: 'L',
-      quantity: 1,
-      status: '배송 중',
-      delivery: 'CJ대한통운 5849-1204-7721',
-      orderedAt: '2026.05.06',
-    },
-    {
-      id: 'VUL-20260502-014',
-      product: products[5],
-      size: '270',
-      quantity: 1,
-      status: '배송 완료',
-      delivery: '한진택배 4331-8820-1350',
-      orderedAt: '2026.05.02',
-    },
-  ];
+function MyPage({ user, cart, wishlist, coupons, catalogProducts, navigate, logout }) {
+  const [purchaseItems, setPurchaseItems] = useState([]);
+
+  React.useEffect(() => {
+    if (!user?.email) return;
+    fetch(`/api/orders?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        const rows = Array.isArray(payload?.data) ? payload.data : [];
+        setPurchaseItems(rows.map((row, index) => normalizeOrderRecord(row, catalogProducts, index)));
+      })
+      .catch(() => setPurchaseItems([]));
+  }, [user?.email, catalogProducts]);
 
   return (
     <section className="commercePage">
@@ -1747,22 +1785,102 @@ function MyPage({ user, cart, wishlist, coupons, navigate, logout }) {
           <h2>구매내역</h2>
           <button onClick={() => navigate('/delivery')}>배송조회</button>
         </div>
-        {purchaseItems.map((order) => (
+        {purchaseItems.length === 0 ? (
+          <EmptyState title="아직 구매내역이 없습니다" action="상품 보러가기" onClick={() => navigate('/recommend')} />
+        ) : purchaseItems.map((order) => (
           <article className="orderHistoryCard" key={order.id}>
             <img src={order.product.image} alt={order.product.name} onError={(event) => { event.currentTarget.src = fallbackImage(order.product.name); }} />
             <div>
               <span>{order.orderedAt} · 주문번호 {order.id}</span>
               <h3>{order.product.name}</h3>
-              <p>사이즈 {order.size} · {order.quantity}개 · {formatPrice(order.product.price * order.quantity)}</p>
+              <p>사이즈 {order.size} · {order.quantity}개 · {formatPrice(order.amount)}</p>
               <strong>{order.status}</strong>
               <small>{order.delivery}</small>
             </div>
-            <button className="secondaryButton" onClick={() => navigate('/delivery')}>상세조회</button>
+            <button className="secondaryButton" onClick={() => navigate(`/delivery?order=${encodeURIComponent(order.id)}`)}>상세조회</button>
           </article>
         ))}
       </section>
     </section>
   );
+}
+
+function normalizeOrderRecord(row, catalogProducts, index) {
+  const payload = parseRecordPayload(row.payloadJson);
+  const firstItem = String(payload.items || '').split(',')[0] || '';
+  const productId = payload.productId || firstItem.split(':')[0];
+  const quantity = Number(payload.quantity || firstItem.split(':')[1] || 1);
+  const matchedProduct = catalogProducts.find((product) => product.id === productId);
+  const product = matchedProduct || {
+    id: productId || `order-product-${index}`,
+    brand: payload.brand || 'VUL Shop',
+    name: payload.productName || payload.itemsSummary || '주문 상품',
+    image: payload.productImage || fallbackImage(payload.productName || '주문 상품'),
+    price: Number(payload.paymentTotal || payload.total || payload.chargedAmount || 0),
+  };
+  return {
+    id: row.recordKey || payload.orderId || `ORDER-${row.id}`,
+    product,
+    size: payload.size || 'M',
+    quantity,
+    amount: Number(payload.paymentTotal || payload.chargedAmount || payload.total || product.price * quantity || 0),
+    status: orderStatusLabel(row.status || payload.status),
+    delivery: payload.deliveryCompany && payload.trackingNumber
+      ? `${payload.deliveryCompany} ${payload.trackingNumber}`
+      : deliveryText(row.status),
+    orderedAt: formatOrderDate(row.createdAt),
+  };
+}
+
+function parseRecordPayload(payloadJson) {
+  if (!payloadJson) return {};
+  try {
+    return JSON.parse(payloadJson);
+  } catch {
+    return {};
+  }
+}
+
+function orderStatusLabel(status) {
+  const labels = {
+    ORDER_RECEIVED: '주문 접수',
+    PAYMENT_COMPLETED: '결제 완료',
+    PREPARING: '상품 준비',
+    PREPARING_PRODUCT: '상품 준비',
+    SHIPPED: '출고 완료',
+    SHIPPING: '배송 중',
+    IN_DELIVERY: '배송 중',
+    DELIVERED: '배송 완료',
+    CONFIRMED: '구매 확정',
+    RETURN_REQUESTED: '반품 접수',
+  };
+  return labels[status] || status || '주문 접수';
+}
+
+function deliveryText(status) {
+  if (['SHIPPING', 'IN_DELIVERY'].includes(status)) return 'CJ대한통운 5849-1204-7721';
+  if (['DELIVERED', 'CONFIRMED'].includes(status)) return '배송 완료 · 구매확정 가능';
+  if (['PREPARING', 'PREPARING_PRODUCT', 'PAYMENT_COMPLETED'].includes(status)) return '상품 준비 중 · 운송장 등록 전';
+  return '주문 접수 완료 · 결제 확인 중';
+}
+
+function formatOrderDate(value) {
+  if (!value) return '방금 전';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+  return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
+function formatCardNumber(value) {
+  return value
+    .replace(/\D/g, '')
+    .slice(0, 16)
+    .replace(/(\d{4})(?=\d)/g, '$1-');
+}
+
+function formatCardExpiry(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 4);
+  return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
 }
 
 function CouponPage({ userCoupons, issueCoupon, navigate }) {
@@ -1883,7 +2001,7 @@ function LikesPage({ navigate, posts }) {
   );
 }
 
-function ReviewPage({ navigate }) {
+function ReviewPage({ navigate, products }) {
   const reviews = products.slice(0, 12).map((product, index) => ({
     product,
     text: [
@@ -1902,7 +2020,7 @@ function ReviewPage({ navigate }) {
         </div>
         <span>{reviews.length}개 리뷰</span>
       </div>
-      <div className="reviewGrid">
+      {reviews.length === 0 ? <EmptyState title="DB에 등록된 리뷰 상품이 없습니다" action="상품 보러가기" onClick={() => navigate('/recommend')} /> : <div className="reviewGrid">
         {reviews.map(({ product, text }) => (
           <article key={product.id} onClick={() => navigate(`/products/${product.id}`)}>
             <img src={product.image} alt={product.name} onError={(event) => { event.currentTarget.src = fallbackImage(product.name); }} />
@@ -1914,7 +2032,7 @@ function ReviewPage({ navigate }) {
             </div>
           </article>
         ))}
-      </div>
+      </div>}
     </section>
   );
 }
@@ -2447,16 +2565,6 @@ function CsPage({ navigate, user }) {
   const submit = async (event) => {
     event.preventDefault();
     if (!form.title.trim() || !form.body.trim()) return;
-    const record = {
-      recordKey: `CS-${Date.now()}`,
-      status: 'PENDING',
-      title: form.title,
-      body: form.body,
-      answer: '',
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-    const stored = JSON.parse(localStorage.getItem(`vulshop.cs.${user.email}`) || '[]');
-    localStorage.setItem(`vulshop.cs.${user.email}`, JSON.stringify([record, ...stored]));
     const payload = new FormData();
     payload.append('userEmail', user.email);
     payload.append('title', form.title);
@@ -2504,35 +2612,13 @@ function CsPage({ navigate, user }) {
 }
 
 function MyInquiryPage({ navigate, user }) {
-  const defaultItems = [
-    {
-      recordKey: 'CS-20260506-001',
-      status: 'ANSWERED',
-      title: '무통장 입금 확인 문의',
-      body: '입금 완료 체크를 했는데 배송 준비로 넘어가는지 궁금합니다.',
-      answer: '입금 확인 후 평균 10분 안에 결제완료 상태로 전환됩니다. 지연 시 고객센터에서 수동 확인합니다.',
-      createdAt: '2026.05.06',
-    },
-    {
-      recordKey: 'CS-20260504-008',
-      status: 'PENDING',
-      title: '사이즈 교환 가능 여부',
-      body: '스니커즈 270에서 280으로 교환하고 싶습니다.',
-      answer: '',
-      createdAt: '2026.05.04',
-    },
-  ];
-  const [items, setItems] = useState(() => [
-    ...JSON.parse(localStorage.getItem(`vulshop.cs.${user.email}`) || '[]'),
-    ...defaultItems,
-  ]);
+  const [items, setItems] = useState([]);
 
   React.useEffect(() => {
     fetch(`/api/cs/inquiries?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
       .then((response) => response.ok ? response.json() : null)
       .then((payload) => {
         if (Array.isArray(payload?.data)) {
-          const localItems = JSON.parse(localStorage.getItem(`vulshop.cs.${user.email}`) || '[]');
           const remoteItems = payload.data.map((record) => {
             const parsed = safeJson(record.payloadJson);
             return {
@@ -2544,7 +2630,7 @@ function MyInquiryPage({ navigate, user }) {
               createdAt: record.createdAt?.slice(0, 10) || '',
             };
           });
-          setItems([...localItems, ...remoteItems, ...defaultItems]);
+          setItems(remoteItems);
         }
       })
       .catch(() => {});
@@ -2560,7 +2646,7 @@ function MyInquiryPage({ navigate, user }) {
         <button className="secondaryButton" onClick={() => navigate('/cs')}>문의하기</button>
       </div>
       <div className="inquiryHistoryList">
-        {items.map((item) => (
+        {items.length === 0 ? <EmptyState title="등록한 문의가 없습니다" action="문의하기" onClick={() => navigate('/cs')} /> : items.map((item) => (
           <article key={item.recordKey}>
             <div>
               <span>{item.createdAt} · {item.recordKey}</span>
@@ -2583,6 +2669,8 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [selectedCoupon, setSelectedCoupon] = useState('cp-new-15');
   const [depositConfirmed, setDepositConfirmed] = useState(false);
+  const [cardForm, setCardForm] = useState({ company: 'shinhan', number: '', expiry: '', cvc: '' });
+  const [registeredCard, setRegisteredCard] = useState(null);
   const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const couponDiscount = selectedCoupon ? Math.round(total * 0.1) : 0;
   const paymentTotal = Math.max(0, total - couponDiscount);
@@ -2640,11 +2728,18 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
           </label>
           {paymentMethod === 'card' && (
             <div className="paymentDetailBox">
-              <label>카드 은행사<select defaultValue="shinhan"><option value="shinhan">신한카드</option><option value="kb">KB국민카드</option><option value="hyundai">현대카드</option><option value="lotte">롯데카드</option></select></label>
-              <label>카드번호<input inputMode="numeric" placeholder="1234-5678-9012-3456" /></label>
-              <label>유효기간<input placeholder="MM/YY" /></label>
-              <label>CVC<input inputMode="numeric" placeholder="123" /></label>
-              <button className="secondaryButton" type="button">카드등록</button>
+              <label>카드 은행사<select value={cardForm.company} onChange={(event) => setCardForm((current) => ({ ...current, company: event.target.value }))}><option value="shinhan">신한카드</option><option value="kb">KB국민카드</option><option value="hyundai">현대카드</option><option value="lotte">롯데카드</option></select></label>
+              <label>카드번호<input value={cardForm.number} onChange={(event) => setCardForm((current) => ({ ...current, number: formatCardNumber(event.target.value) }))} inputMode="numeric" placeholder="1234-5678-9012-3456" /></label>
+              <label>유효기간<input value={cardForm.expiry} onChange={(event) => setCardForm((current) => ({ ...current, expiry: formatCardExpiry(event.target.value) }))} placeholder="MM/YY" /></label>
+              <label>CVC<input value={cardForm.cvc} onChange={(event) => setCardForm((current) => ({ ...current, cvc: event.target.value.replace(/\D/g, '').slice(0, 4) }))} inputMode="numeric" placeholder="123" /></label>
+              <button className="secondaryButton" type="button" onClick={() => {
+                if (cardForm.number.replace(/\D/g, '').length < 12 || !cardForm.expiry || cardForm.cvc.length < 3) {
+                  window.alert('카드번호, 유효기간, CVC를 입력해 주세요.');
+                  return;
+                }
+                setRegisteredCard({ ...cardForm, masked: `****-****-****-${cardForm.number.replace(/\D/g, '').slice(-4)}` });
+              }}>카드등록</button>
+              {registeredCard && <p className="formSuccess">{registeredCard.masked} 카드가 등록되었습니다.</p>}
             </div>
           )}
           {paymentMethod === 'bank' && (
@@ -2668,6 +2763,7 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
           <button
             className="primaryButton"
             onClick={async () => {
+              const firstItem = cart[0];
               const response = await fetch('/api/orders/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -2676,7 +2772,18 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
                   receiverName: user.name,
                   address: user.address,
                   paymentMethod,
+                  cardCompany: paymentMethod === 'card' ? cardForm.company : '',
+                  cardNumber: paymentMethod === 'card' ? cardForm.number : '',
+                  registeredCard: paymentMethod === 'card' ? registeredCard?.masked || '' : '',
+                  depositConfirmed,
                   couponId: selectedCoupon,
+                  productId: firstItem?.product?.id || '',
+                  productName: firstItem?.product?.name || '주문 상품',
+                  productImage: firstItem?.product?.image || '',
+                  brand: firstItem?.product?.brand || 'VUL Shop',
+                  size: 'M',
+                  quantity: firstItem?.quantity || 1,
+                  itemsSummary: cart.map((item) => `${item.product.name} ${item.quantity}개`).join(', '),
                   total,
                   couponDiscount,
                   paymentTotal,
@@ -2691,9 +2798,9 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
               }
               navigate(recordKey ? `/delivery?order=${encodeURIComponent(recordKey)}` : '/delivery');
             }}
-            disabled={paymentMethod === 'bank' && !depositConfirmed}
+            disabled={(paymentMethod === 'bank' && !depositConfirmed) || (paymentMethod === 'card' && !registeredCard)}
           >
-            {paymentMethod === 'bank' && !depositConfirmed ? '입금 확인 필요' : '결제하기'}
+            {paymentMethod === 'bank' && !depositConfirmed ? '입금 확인 필요' : paymentMethod === 'card' && !registeredCard ? '카드 등록 필요' : '결제하기'}
           </button>
         </aside>
       </div>
@@ -2723,7 +2830,7 @@ function DeliveryPage({ navigate, lastOrderKey }) {
       <div className="pageHeader">
         <div>
           <h1>배송조회</h1>
-          <p>주문 {orderKey || 'VUL-20260506-001'}의 배송 상태입니다.</p>
+          <p>{orderKey ? `주문 ${orderKey}의 배송 상태입니다.` : '조회할 주문이 없습니다. 마이페이지 구매내역에서 주문을 선택해 주세요.'}</p>
         </div>
         <span>{labels[activeIndex]}</span>
       </div>
@@ -2747,7 +2854,11 @@ function LoginPage({ navigate, setUser, redirectTo = '/mypage', onDone }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    const nextEmail = email || 'member@vulshop.local';
+    const nextEmail = email;
+    if (!nextEmail || !password) {
+      window.alert('이메일과 비밀번호를 입력해 주세요.');
+      return;
+    }
     const next = String(new FormData(event.currentTarget).get('next') || redirectTo);
     try {
       const token = await requestAuth('/api/auth/login', { email: nextEmail, password, next });
@@ -3159,74 +3270,81 @@ function AdminEntry({ navigate, path, admin, logout }) {
     ['analytics', '통계'],
     ['system', '시스템/보안'],
   ];
+  const [dashboardCounts, setDashboardCounts] = useState({ users: 0, partners: 0, products: 0, orders: 0, cs: 0 });
+  React.useEffect(() => {
+    if (section !== 'dashboard') return;
+    Promise.all([
+      fetch('/api/admin/users', { headers: adminHeaders() }).then((response) => response.ok ? response.json() : null),
+      fetch('/api/admin/partners', { headers: adminHeaders() }).then((response) => response.ok ? response.json() : null),
+      fetch('/api/admin/products', { headers: adminHeaders() }).then((response) => response.ok ? response.json() : null),
+      fetch('/api/admin/orders', { headers: adminHeaders() }).then((response) => response.ok ? response.json() : null),
+      fetch('/api/admin/cs/inquiries', { headers: adminHeaders() }).then((response) => response.ok ? response.json() : null),
+    ]).then(([users, partners, products, orders, cs]) => {
+      setDashboardCounts({
+        users: users?.data?.length || 0,
+        partners: partners?.data?.length || 0,
+        products: products?.data?.length || 0,
+        orders: orders?.data?.filter?.((item) => item.domainType === 'ORDER')?.length || 0,
+        cs: cs?.data?.length || 0,
+      });
+    }).catch(() => {});
+  }, [section]);
   const metrics = [
-    ['오늘 매출', '12,840,000원', '+18.4%', '정상'],
-    ['신규 주문', '128건', '+12건', '처리중'],
-    ['승인 대기', '17개', '상품 검수', '주의'],
-    ['미처리 문의', '9건', '평균 14분', '확인'],
-  ];
-  const queues = [
-    ['상품 승인', '오버핏 후드 스웨트셔츠 옵션 이미지 검수', '높음'],
-    ['배송 이슈', '주문 VUL-20260505-018 배송지 확인 필요', '중간'],
-    ['커뮤니티 신고', '게시글 이미지 저작권 확인 요청', '낮음'],
-    ['정산 확인', '파트너 RUNNER 주간 정산 검토', '중간'],
-  ];
-  const activities = [
-    '관리자 root가 상품 p-1003 가격을 수정했습니다.',
-    '신규 파트너 AURORA가 입점 신청을 제출했습니다.',
-    '쿠폰 STYLE-WEEK-15가 326회 사용되었습니다.',
-    '회원 핏감연구소의 1:1 문의가 접수되었습니다.',
+    ['전체 회원', `${dashboardCounts.users}명`, 'DB users', '실데이터'],
+    ['입점 신청', `${dashboardCounts.partners}건`, 'DB partner_applications', '실데이터'],
+    ['상품 승인 요청', `${dashboardCounts.products}건`, 'DB seller_product_applications', '실데이터'],
+    ['주문/문의', `${dashboardCounts.orders}/${dashboardCounts.cs}건`, 'DB commerce_records', '실데이터'],
   ];
   const adminSections = {
     users: {
       title: '회원 관리',
       desc: '회원 상태, 권한, 로그인 이력, 보유 쿠폰과 마일리지를 관리합니다.',
-      rows: ['휴면 전환 대상 18명', '비밀번호 재설정 요청 7건', '신규 가입 회원 42명'],
+      rows: [],
     },
     partners: {
       title: '파트너 관리',
       desc: '입점 신청, 판매자 정보, 정산 계좌와 파트너 등급을 검수합니다.',
-      rows: ['입점 신청 5건', '정산 계좌 재검증 2건', '파트너 등급 조정 4건'],
+      rows: [],
     },
     products: {
       title: '상품 관리',
       desc: '상품 등록/편집, 카테고리 전시, 재고, 창고, 승인 프로세스를 처리합니다.',
-      rows: ['상품 승인 대기 17개', '품절 임박 SKU 36개', '전시 카테고리 변경 예약 8건'],
+      rows: [],
     },
     community: {
       title: '커뮤니티 관리',
       desc: '게시글, 댓글, 이미지 신고, 좋아요 이상 패턴을 모니터링합니다.',
-      rows: ['이미지 신고 6건', '댓글 블라인드 요청 3건', '인기 게시글 24개'],
+      rows: [],
     },
     employees: {
       title: '직원 관리',
       desc: '운영자 계정, 직무, 근무 상태, 접근 권한을 관리합니다.',
-      rows: ['신규 운영자 초대 2건', '권한 변경 요청 4건', '퇴사자 계정 잠금 1건'],
+      rows: [],
     },
     orders: {
       title: '주문 정산 관리',
       desc: '주문 라이프 사이클, 정산 시스템, 배송/물류 트래킹을 관리합니다.',
-      rows: ['배송 지연 주문 12건', '정산 보류 3건', '환불 승인 대기 9건'],
+      rows: [],
     },
     cs: {
       title: 'CS 관리',
       desc: '1:1 문의, QNA, 교환/반품 요청을 처리합니다.',
-      rows: ['미처리 1:1 문의 9건', '상품 QNA 답변 대기 14건', '반품 수거 예약 11건'],
+      rows: [],
     },
     promotions: {
       title: '마케팅 및 프로모션',
       desc: '쿠폰, 할인, 이벤트, 기획전, 광고 운영 상태를 관리합니다.',
-      rows: ['발급 가능 쿠폰 5종', '진행 이벤트 4개', '광고 소재 심사 6건'],
+      rows: [],
     },
     analytics: {
       title: '데이터 분석 및 통계',
       desc: '매출 리포트, 사용자 행동 분석, 운영 대시보드를 확인합니다.',
-      rows: ['전환율 3.8%', '장바구니 이탈률 41%', '오늘 매출 12,840,000원'],
+      rows: [],
     },
     system: {
       title: '시스템 관리 및 보안',
       desc: '권한 관리, 감사 로그, 보안 환경 설정, 시스템 설정을 관리합니다.',
-      rows: ['감사 로그 2,184건', 'JWT 시크릿 환경변수 사용', 'MySQL 13306 포트 매핑'],
+      rows: [],
     },
   };
 
@@ -3295,15 +3413,10 @@ function AdminEntry({ navigate, path, admin, logout }) {
               <button onClick={() => navigate('/root/orders')}>전체보기</button>
             </div>
             <div className="adminQueue">
-              {queues.map(([title, body, level]) => (
-                <button key={body}>
-                  <div>
-                    <strong>{title}</strong>
-                    <span>{body}</span>
-                  </div>
-                  <em>{level}</em>
-                </button>
-              ))}
+              <button onClick={() => navigate('/root/products')}><div><strong>상품 승인</strong><span>DB 승인 요청 {dashboardCounts.products}건</span></div><em>{dashboardCounts.products > 0 ? '확인' : '없음'}</em></button>
+              <button onClick={() => navigate('/root/partners')}><div><strong>파트너 승인</strong><span>DB 입점 신청 {dashboardCounts.partners}건</span></div><em>{dashboardCounts.partners > 0 ? '확인' : '없음'}</em></button>
+              <button onClick={() => navigate('/root/orders')}><div><strong>주문 처리</strong><span>DB 주문 {dashboardCounts.orders}건</span></div><em>{dashboardCounts.orders > 0 ? '확인' : '없음'}</em></button>
+              <button onClick={() => navigate('/root/cs')}><div><strong>CS 답변</strong><span>DB 문의 {dashboardCounts.cs}건</span></div><em>{dashboardCounts.cs > 0 ? '확인' : '없음'}</em></button>
             </div>
           </article>
           <article className="adminPanel">
@@ -3322,9 +3435,7 @@ function AdminEntry({ navigate, path, admin, logout }) {
               <h2>최근 활동</h2>
             </div>
             <div className="activityList">
-              {activities.map((activity) => (
-                <p key={activity}>{activity}</p>
-              ))}
+              <p>감사 로그 메뉴에서 DB에 저장된 운영 기록만 표시합니다.</p>
             </div>
           </article>
           <article className="adminPanel chartPanel">
@@ -3332,9 +3443,11 @@ function AdminEntry({ navigate, path, admin, logout }) {
               <h2>시간대별 주문</h2>
             </div>
             <div className="barChart" aria-label="시간대별 주문 차트">
-              {[42, 64, 38, 72, 88, 54, 93, 70].map((height, index) => (
+              {[dashboardCounts.users, dashboardCounts.partners, dashboardCounts.products, dashboardCounts.orders, dashboardCounts.cs].map((count, index) => {
+                const height = Math.max(8, Math.min(100, count * 12));
+                return (
                 <span style={{ height: `${height}%` }} key={index}></span>
-              ))}
+              );})}
             </div>
           </article>
           </section>
@@ -3374,7 +3487,7 @@ function AdminApprovalPanel({ title, endpoint, approvePath, revokePath, label })
           {items.length === 0 ? <p>항목이 없습니다.</p> : items.map((item, index) => (
             <div className="adminTableRow" key={item.id || index}>
               <strong>{String(index + 1).padStart(2, '0')} · {label(item)}</strong>
-              <em>{item.status || item.approvalStatus || 'PENDING'}</em>
+              <em className={adminStatusClass(item.status || item.approvalStatus || 'PENDING')}>{item.status || item.approvalStatus || 'PENDING'}</em>
               <span>{item.email || item.sellerEmail || item.memo || item.description || '승인 상태를 관리합니다.'}</span>
               <div>
                 <button className="secondaryButton" onClick={() => run(approvePath(item))}>승인</button>
@@ -3567,13 +3680,7 @@ function AdminSectionPanel({ sectionKey, section }) {
         {message && <p className="adminMessage">{message}</p>}
         <div className="adminTable">
           {items.length === 0 ? (
-            section.rows.map((row, index) => (
-              <button key={row}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <strong>{row}</strong>
-                <em>{index === 0 ? '긴급' : '확인'}</em>
-              </button>
-            ))
+            <p>{config?.empty || 'DB에 저장된 데이터가 없습니다.'}</p>
           ) : (
             <>
               <div className="adminTableHead">
@@ -3583,7 +3690,7 @@ function AdminSectionPanel({ sectionKey, section }) {
               {items.map((item, index) => (
                 <div className="adminTableRow" key={item.id || item.recordKey || index}>
                   <strong>{config.label(item)}</strong>
-                  <em>{config.status(item)}</em>
+                  <em className={adminStatusClass(config.status(item))}>{config.status(item)}</em>
                   {config.rawDetail ? <span dangerouslySetInnerHTML={{ __html: config.detail(item) }} /> : <span>{config.detail(item)}</span>}
                   <div>
                     {(config.actions || []).filter((action) => !action.when || action.when(item)).map((action) => (
@@ -3608,6 +3715,20 @@ function AdminSectionPanel({ sectionKey, section }) {
       </article>
     </section>
   );
+}
+
+function adminStatusClass(status) {
+  const normalized = String(status || '').toUpperCase();
+  if (['SANCTIONED', 'SUSPENDED', 'BANNED', 'DELETED', 'REJECTED', 'RETURN_REQUESTED'].includes(normalized)) {
+    return 'statusDanger';
+  }
+  if (['PENDING', 'ORDER_RECEIVED', 'SCHEDULED'].includes(normalized)) {
+    return 'statusWarning';
+  }
+  if (['ACTIVE', 'APPROVED', 'PAYMENT_COMPLETED', 'DELIVERED', 'CONFIRMED'].includes(normalized)) {
+    return 'statusSuccess';
+  }
+  return 'statusNeutral';
 }
 
 createRoot(document.getElementById('root')).render(
