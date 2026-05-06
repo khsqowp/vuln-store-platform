@@ -1,9 +1,0 @@
-User-agent: *
-Disallow: /admin
-Disallow: /api/v1/admin
-Disallow: /api/v1/users
-Disallow: /api/v1/orders
-Disallow: /uploads
-Allow: /
-
-Sitemap: http://vulshop.com/sitemap.xml

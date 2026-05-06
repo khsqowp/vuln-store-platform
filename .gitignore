@@ -31,6 +31,7 @@ out/
 
 # 5. 빌드 결과물 및 로그
 *.log
+logs/
 *.tmp
 *.bak
 dist/
@@ -44,3 +45,13 @@ __pycache__/
 .cache/
 .eslintcache
 .pytest_cache/
+.gradle/
+
+# 7. 취약점 점검 문서 (커밋 금지)
+checklist/
+
+# 8. Markdown 문서는 기본적으로 추적한다.
+# API 문서와 .codex 컨텍스트 문서가 통째로 제외되지 않도록 예외를 명시한다.
+!*.md
+!docs/**/*.md
+!.codex/**/*.md

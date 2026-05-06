@@ -1,73 +1,69 @@
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: vulshop-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: vulshop
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - mysql_data:/var/lib/mysql
-    ports:
-      - "3306:3306"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  backend:
+  # ── Web tier: Nginx + React static ──────────────────────────────────────────
+  web:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: vulshop-backend
-    restart: unless-stopped
-    environment:
-      SPRING_PROFILES_ACTIVE: local
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET:-VulShop2024!}
-    volumes:
-      - uploads:/app/uploads
-      - logs:/app/logs
-    ports:
-      - "8080:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: vulshop-frontend
-    restart: unless-stopped
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost/api
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-
-  nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    container_name: vulshop-nginx
-    restart: unless-stopped
+      context: .
+      dockerfile: frontend/Dockerfile.prod
     ports:
       - "80:80"
-    volumes:
-      - uploads:/app/uploads
     depends_on:
-      - backend
-      - frontend
+      - app
+    networks:
+      - public-net
+    restart: unless-stopped
+
+  # ── App tier: Spring Boot ────────────────────────────────────────────────────
+  app:
+    build:
+      context: ./shop
+    env_file:
+      - .env
+    environment:
+      SERVER_PORT: 8100
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/vulshop?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQLDialect
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-2592000}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - public-net
+      - private-net
+    restart: unless-stopped
+
+  # ── DB tier: MySQL ───────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.4
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    env_file:
+      - .env
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db/mysql/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - private-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+networks:
+  public-net:
+  private-net:
+    internal: true
 
 volumes:
-  mysql_data:
-  uploads:
-  logs:
+  mysql-data:

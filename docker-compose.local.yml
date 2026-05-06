@@ -1,0 +1,54 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      VITE_API_BASE_URL: http://backend:8100
+    ports:
+      - "3100:3100"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./shop
+    env_file:
+      - .env
+    environment:
+      SERVER_PORT: 8100
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:13306/vulshop?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQLDialect
+    ports:
+      - "8100:8100"
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:8.4
+    command: ["--port=13306", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    env_file:
+      - .env
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "13306:13306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db/mysql/init:/docker-entrypoint-initdb.d:ro
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--port", "16379", "--appendonly", "yes"]
+    ports:
+      - "16379:16379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  mysql-data:
+  redis-data:
