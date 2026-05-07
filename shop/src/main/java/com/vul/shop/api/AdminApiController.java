@@ -57,10 +57,10 @@ public class AdminApiController {
 
 	@GetMapping("/users")
 	public ApiResponse<List<UserEntity>> users(@RequestParam(required = false) String keyword, @RequestParam(required = false) String status) {
-		discovery.discover("access-control", "admin-users-api-access");
+		discovery.discoverChallenge("VULN-015");
 		seedUsersIfEmpty();
 		if (keyword != null && !keyword.isBlank()) {
-			discovery.maybeDiscover("sqli", "admin-user-search-sqli", VulnerabilityDiscoveryService.looksSqlInjected(keyword) || VulnerabilityDiscoveryService.looksSqlInjected(status));
+			discovery.maybeDiscoverChallenge("VULN-004", VulnerabilityDiscoveryService.looksSqlInjected(keyword) || VulnerabilityDiscoveryService.looksSqlInjected(status));
 			// VULN-004: keyword는 single-quote 이스케이프로 보호, status 파라미터는 WHERE 절에 직접 삽입
 			String safeKeyword = keyword.replace("'", "''");
 			String statusCondition = (status != null && !status.isBlank()) ? " and status = '" + status + "'" : "";
@@ -76,7 +76,7 @@ public class AdminApiController {
 		}
 		// keyword 없이 status만 있는 경우 — VULN-004 동일 경로
 		if (status != null && !status.isBlank()) {
-			discovery.maybeDiscover("sqli", "admin-user-status-sqli", VulnerabilityDiscoveryService.looksSqlInjected(status));
+			discovery.maybeDiscoverChallenge("VULN-004", VulnerabilityDiscoveryService.looksSqlInjected(status));
 			String sql = "select * from users where status = '" + status + "'";
 			return ApiResponse.accepted("Admin user management data loaded with diagnostic SQL path.", jdbcTemplate.query(sql, (rs, rowNum) -> UserEntity.create(
 				rs.getString("name"),
@@ -92,7 +92,7 @@ public class AdminApiController {
 
 	@PutMapping("/users/{userId}")
 	public ApiResponse<UserEntity> updateUser(@PathVariable long userId, @RequestBody Map<String, Object> request) {
-		discovery.discover("access-control", "admin-user-update");
+		discovery.discoverChallenge("VULN-015");
 		UserEntity user = users.findById(userId).orElseThrow();
 		if (request.containsKey("status")) {
 			user.changeStatus(String.valueOf(request.get("status")));
@@ -106,7 +106,7 @@ public class AdminApiController {
 
 	@PostMapping("/users")
 	public ApiResponse<UserEntity> createUser(@RequestBody Map<String, Object> request) {
-		discovery.maybeDiscover("access-control", "mass-assignment-admin-account", "ADMIN".equalsIgnoreCase(String.valueOf(request.getOrDefault("role", ""))) || "SELLER".equalsIgnoreCase(String.valueOf(request.getOrDefault("role", ""))));
+		discovery.maybeDiscoverChallenge("VULN-023", "ADMIN".equalsIgnoreCase(String.valueOf(request.getOrDefault("role", ""))) || "SELLER".equalsIgnoreCase(String.valueOf(request.getOrDefault("role", ""))));
 		UserEntity user = UserEntity.create(
 			String.valueOf(request.getOrDefault("name", "운영 계정")),
 			String.valueOf(request.getOrDefault("email", "employee-" + System.currentTimeMillis() + "@vul.com")),
@@ -125,7 +125,7 @@ public class AdminApiController {
 
 	@PostMapping("/partners/{partnerId}/approve")
 	public ApiResponse<PartnerApplicationEntity> approvePartner(@PathVariable long partnerId) {
-		discovery.discover("access-control", "admin-partner-approval");
+		discovery.discoverChallenge("VULN-015");
 		PartnerApplicationEntity partner = partnerApplications.findById(partnerId).orElseThrow();
 		partner.approve();
 		return ApiResponse.accepted("Partner application approved.", partnerApplications.save(partner));
@@ -133,7 +133,7 @@ public class AdminApiController {
 
 	@PostMapping("/partners/{partnerId}/revoke")
 	public ApiResponse<PartnerApplicationEntity> revokePartner(@PathVariable long partnerId) {
-		discovery.discover("access-control", "admin-partner-revoke");
+		discovery.discoverChallenge("VULN-015");
 		PartnerApplicationEntity partner = partnerApplications.findById(partnerId).orElseThrow();
 		partner.revoke();
 		return ApiResponse.accepted("Partner application revoked.", partnerApplications.save(partner));
@@ -155,7 +155,7 @@ public class AdminApiController {
 	public ApiResponse<Map<String, Object>> createProduct(@RequestBody Map<String, Object> request) {
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		String imageUrl = String.valueOf(request.getOrDefault("imageUrl", request.getOrDefault("bannerUrl", "")));
-		discovery.maybeDiscover("ssrf", "admin-product-image-ssrf", VulnerabilityDiscoveryService.looksSsrf(imageUrl));
+		discovery.maybeDiscoverChallenge("VULN-025", VulnerabilityDiscoveryService.looksSsrf(imageUrl));
 		payload.put("ssrfProbe", fetchUrlProbe(imageUrl));
 		payload.put("diagnosticNote", "VULN-025 admin product management fetches supplied image URL server-side.");
 		ProductEntity product = saveProductFromPayload(payload);
@@ -168,14 +168,14 @@ public class AdminApiController {
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		if (file != null) {
 			String filename = file.getOriginalFilename() == null ? "admin-upload" : file.getOriginalFilename();
-			discovery.maybeDiscover("file-upload", "admin-product-upload", VulnerabilityDiscoveryService.suspiciousFile(filename, file.getContentType()));
+			discovery.maybeDiscoverChallenge("VULN-018", VulnerabilityDiscoveryService.suspiciousFile(filename, file.getContentType()));
 			payload.put("originalFilename", filename);
 			payload.put("contentType", file.getContentType());
 			payload.put("storedPath", "/uploads/products/" + filename);
 			payload.put("diagnosticNote", "VULN-018 stores admin product upload with the original filename and no extension/MIME validation.");
 		}
 		String imageUrl = String.valueOf(payload.getOrDefault("imageUrl", payload.getOrDefault("bannerUrl", "")));
-		discovery.maybeDiscover("ssrf", "admin-product-multipart-ssrf", VulnerabilityDiscoveryService.looksSsrf(imageUrl));
+		discovery.maybeDiscoverChallenge("VULN-025", VulnerabilityDiscoveryService.looksSsrf(imageUrl));
 		payload.put("ssrfProbe", fetchUrlProbe(imageUrl));
 		ProductEntity product = saveProductFromPayload(payload);
 		CommerceRecordEntity record = commerceRecords.save(CommerceRecordEntity.create("ADMIN_PRODUCT_CHANGE", "admin", "admin-product-" + product.getProductCode(), "CREATED", payload));
@@ -184,7 +184,7 @@ public class AdminApiController {
 
 	@PutMapping(value = "/products/{productId}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ApiResponse<CommerceRecordEntity> updateProduct(@PathVariable long productId, @RequestBody Map<String, Object> request) {
-		discovery.discover("access-control", "admin-product-update");
+		discovery.discoverChallenge("VULN-015");
 		jdbcTemplate.update(
 			"update products set category = coalesce(?, category), brand = coalesce(?, brand), name = coalesce(?, name), price = coalesce(?, price), original_price = coalesce(?, original_price), discount_rate = coalesce(?, discount_rate), description = coalesce(?, description) where id = ?",
 			request.get("category"),
@@ -202,7 +202,7 @@ public class AdminApiController {
 
 	@PostMapping("/products/{productId}/approve")
 	public ApiResponse<SellerProductApplicationEntity> approveProduct(@PathVariable long productId) {
-		discovery.discover("access-control", "admin-product-approval");
+		discovery.discoverChallenge("VULN-015");
 		SellerProductApplicationEntity application = sellerProducts.findById(productId).orElseThrow();
 		application.approve();
 		sellerProducts.save(application);
@@ -251,13 +251,13 @@ public class AdminApiController {
 
 	@PostMapping("/employees")
 	public ApiResponse<CommerceRecordEntity> createEmployee(@RequestBody Map<String, Object> request) {
-		discovery.discover("access-control", "admin-employee-create");
+		discovery.discoverChallenge("VULN-015");
 		return ApiResponse.accepted("Employee created.", commerceRecords.save(CommerceRecordEntity.create("EMPLOYEE", String.valueOf(request.getOrDefault("email", "employee@vul.com")), "employee-" + System.currentTimeMillis(), "ACTIVE", request)));
 	}
 
 	@PostMapping("/employees/{recordKey}/status")
 	public ApiResponse<CommerceRecordEntity> updateEmployee(@PathVariable String recordKey, @RequestBody Map<String, Object> request) {
-		discovery.discover("access-control", "admin-employee-update");
+		discovery.discoverChallenge("VULN-015");
 		CommerceRecordEntity employee = commerceRecords.findByRecordKey(recordKey).orElseThrow();
 		employee.changeStatus(String.valueOf(request.getOrDefault("status", "SUSPENDED")));
 		employee.replacePayload(request);
@@ -273,7 +273,7 @@ public class AdminApiController {
 
 	@PostMapping("/orders/{recordKey}/status")
 	public ApiResponse<CommerceRecordEntity> updateOrderStatus(@PathVariable String recordKey, @RequestBody Map<String, Object> request) {
-		discovery.discover("business-logic", "order-lifecycle-status-change");
+		discovery.discoverChallenge("VULN-038");
 		CommerceRecordEntity order = commerceRecords.findByRecordKey(recordKey).orElseThrow();
 		order.changeStatus(String.valueOf(request.getOrDefault("status", "PAYMENT_COMPLETED")));
 		return ApiResponse.accepted("Order status updated.", commerceRecords.save(order));
@@ -286,7 +286,7 @@ public class AdminApiController {
 
 	@PostMapping("/settlements/confirm")
 	public ApiResponse<CommerceRecordEntity> confirmSettlement(@RequestBody Map<String, Object> request) {
-		discovery.discover("business-logic", "settlement-confirmation");
+		discovery.discoverChallenge("VULN-046");
 		return ApiResponse.accepted("Settlement confirmed.", commerceRecords.save(CommerceRecordEntity.create("SETTLEMENT", "admin", "settlement-" + System.currentTimeMillis(), "CONFIRMED", request)));
 	}
 
@@ -297,7 +297,7 @@ public class AdminApiController {
 
 	@PostMapping("/cs/inquiries/{recordKey}/answer")
 	public ApiResponse<CommerceRecordEntity> answerCsInquiry(@PathVariable String recordKey, @RequestBody Map<String, Object> request) {
-		discovery.discover("access-control", "admin-cs-answer");
+		discovery.discoverChallenge("VULN-015");
 		CommerceRecordEntity answer = CommerceRecordEntity.create("CS_ANSWER", "admin", "answer-" + recordKey, "ANSWERED", request);
 		commerceRecords.findByRecordKey(recordKey).ifPresent(inquiry -> {
 			inquiry.changeStatus("ANSWERED");
@@ -313,7 +313,6 @@ public class AdminApiController {
 
 	@PostMapping("/promotions/coupons")
 	public ApiResponse<List<CommerceRecordEntity>> issueCoupon(@RequestBody Map<String, Object> request) {
-		discovery.discover("coupon-payment", "admin-coupon-issue");
 		long ts = System.currentTimeMillis();
 		List<CommerceRecordEntity> issued = users.findAll().stream()
 			.filter(u -> !"ADMIN".equals(u.getRole()))
@@ -330,7 +329,7 @@ public class AdminApiController {
 	public ApiResponse<CommerceRecordEntity> createPromotionEvent(@RequestBody Map<String, Object> request) {
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		String bannerUrl = String.valueOf(request.getOrDefault("bannerUrl", request.getOrDefault("imageUrl", request.getOrDefault("url", ""))));
-		discovery.maybeDiscover("ssrf", "admin-event-banner-ssrf", VulnerabilityDiscoveryService.looksSsrf(bannerUrl));
+		discovery.maybeDiscoverChallenge("VULN-025", VulnerabilityDiscoveryService.looksSsrf(bannerUrl));
 		payload.put("ssrfProbe", fetchUrlProbe(bannerUrl));
 		payload.put("diagnosticNote", "VULN-025 admin event management fetches supplied banner URL server-side.");
 		return ApiResponse.accepted("Admin event management API surface is ready.", commerceRecords.save(CommerceRecordEntity.create("EVENT", "admin", "event-" + System.currentTimeMillis(), "ACTIVE", payload)));
@@ -358,7 +357,7 @@ public class AdminApiController {
 
 	@GetMapping("/system/security-settings")
 	public ApiResponse<List<CommerceRecordEntity>> securitySettings() {
-		discovery.discover("info-disclosure", "security-settings-exposed");
+		discovery.discoverChallenge("VULN-020");
 		return ApiResponse.accepted("Security settings data loaded.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("SECURITY_SETTING"));
 	}
 

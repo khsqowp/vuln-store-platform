@@ -2,6 +2,7 @@ package com.vul.shop.api;
 
 import com.vul.shop.common.ApiResponse;
 import com.vul.shop.domain.commerce.CommerceRecordRepository;
+import com.vul.shop.vulnerability.VulnerabilityCatalogService;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,10 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class EasterEggController {
 	private final CommerceRecordRepository commerceRecords;
 	private final VulnerabilityDiscoveryService discoveryService;
+	private final VulnerabilityCatalogService catalogService;
 
-	public EasterEggController(CommerceRecordRepository commerceRecords, VulnerabilityDiscoveryService discoveryService) {
+	public EasterEggController(CommerceRecordRepository commerceRecords, VulnerabilityDiscoveryService discoveryService, VulnerabilityCatalogService catalogService) {
 		this.commerceRecords = commerceRecords;
 		this.discoveryService = discoveryService;
+		this.catalogService = catalogService;
 	}
 
 	@GetMapping("/progress")
@@ -46,5 +49,24 @@ public class EasterEggController {
 	public ApiResponse<Map<String, Object>> discover(@PathVariable String bucketKey, @RequestBody(required = false) Map<String, Object> request) {
 		String signal = request == null ? "" : String.valueOf(request.getOrDefault("signal", ""));
 		return ApiResponse.accepted("Discovery progress updated.", discoveryService.discover(bucketKey, signal));
+	}
+
+	@GetMapping("/challenges")
+	public ApiResponse<List<Map<String, Object>>> challenges() {
+		List<Map<String, Object>> result = catalogService.findAll().stream().map(scenario -> {
+			boolean discovered = discoveryService.isChallengeDiscovered(scenario.id());
+			return Map.<String, Object>of(
+				"id", scenario.id(),
+				"title", scenario.title(),
+				"type", scenario.type(),
+				"location", scenario.location(),
+				"severity", scenario.severity(),
+				"difficulty", scenario.difficulty(),
+				"bucketKey", VulnerabilityDiscoveryService.CHALLENGE_MAP.getOrDefault(scenario.id(), ""),
+				"discovered", discovered,
+				"endpointHints", scenario.endpointHints()
+			);
+		}).toList();
+		return ApiResponse.accepted("Challenge list ready.", result);
 	}
 }

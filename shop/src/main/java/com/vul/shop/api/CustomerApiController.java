@@ -96,8 +96,8 @@ public class CustomerApiController {
 		String email = String.valueOf(request.getOrDefault("email", request.getOrDefault("username", "")));
 		String password = String.valueOf(request.getOrDefault("password", ""));
 		String redirectTo = String.valueOf(request.getOrDefault("next", request.getOrDefault("redirectTo", "/mypage")));
-		discovery.maybeDiscover("sqli", "login-sqli", VulnerabilityDiscoveryService.looksSqlInjected(email) || VulnerabilityDiscoveryService.looksSqlInjected(password));
-		discovery.maybeDiscover("jwt-auth", "open-redirect-login", redirectTo.startsWith("http://") || redirectTo.startsWith("https://") || redirectTo.startsWith("//"));
+		discovery.maybeDiscoverChallenge("VULN-001", VulnerabilityDiscoveryService.looksSqlInjected(email) || VulnerabilityDiscoveryService.looksSqlInjected(password));
+		discovery.maybeDiscoverChallenge("VULN-034", redirectTo.startsWith("http://") || redirectTo.startsWith("https://") || redirectTo.startsWith("//"));
 		long startedAt = System.nanoTime();
 		boolean accountExists = users.findByEmail(email).isPresent();
 		if (accountExists) {
@@ -110,11 +110,11 @@ public class CustomerApiController {
 			.isPresent();
 		String authenticatedEmail = rows.isEmpty() && !md5Authenticated ? email : rows.isEmpty() ? email : String.valueOf(rows.get(0).get("EMAIL") == null ? rows.get(0).get("email") : rows.get(0).get("EMAIL"));
 		if (rows.isEmpty() && !md5Authenticated) {
-			discovery.discover("jwt-auth", "bruteforce-no-lock");
+			discovery.discoverChallenge("VULN-033");
 			commerceRecords.save(CommerceRecordEntity.create("LOGIN_FAILURE", email, "login-failure-" + Instant.now().toEpochMilli(), "FAILED_NO_LOCK", Map.of("email", email, "diagnosticNote", "VULN-033 records failures but never locks the account.")));
 		}
 		String fixedSessionId = existingSessionId(servletRequest);
-		discovery.maybeDiscover("jwt-auth", "session-fixation", fixedSessionId != null);
+		discovery.maybeDiscoverChallenge("VULN-021", fixedSessionId != null);
 		String sessionId = fixedSessionId == null ? servletRequest.getSession(true).getId() : fixedSessionId;
 		Cookie cookie = new Cookie("JSESSIONID", sessionId);
 		cookie.setPath("/");
@@ -139,10 +139,10 @@ public class CustomerApiController {
 		String email = String.valueOf(request.getOrDefault("email", ""));
 		String password = String.valueOf(request.getOrDefault("password", request.getOrDefault("passwordHash", "")));
 		String requestedRole = String.valueOf(request.getOrDefault("role", "USER"));
-		discovery.maybeDiscover("access-control", "mass-assignment-role", !"USER".equalsIgnoreCase(requestedRole));
-		discovery.maybeDiscover("jwt-auth", "email-verification-bypass", Boolean.parseBoolean(String.valueOf(request.getOrDefault("emailVerified", "false"))));
-		discovery.maybeDiscover("jwt-auth", "weak-password-accepted", password.length() < 8 || !password.matches(".*[A-Z].*") || !password.matches(".*[a-z].*") || !password.matches(".*\\d.*") || !password.matches(".*[^a-zA-Z0-9].*"));
-		discovery.discover("info-disclosure", "weak-md5-password-hash");
+		discovery.maybeDiscoverChallenge("VULN-016", !"USER".equalsIgnoreCase(requestedRole));
+		discovery.maybeDiscoverChallenge("VULN-042", Boolean.parseBoolean(String.valueOf(request.getOrDefault("emailVerified", "false"))));
+		discovery.maybeDiscoverChallenge("VULN-031", password.length() < 8 || !password.matches(".*[A-Z].*") || !password.matches(".*[a-z].*") || !password.matches(".*\\d.*") || !password.matches(".*[^a-zA-Z0-9].*"));
+		discovery.discoverChallenge("VULN-047");
 		UserEntity user = users.findByEmail(email).orElseGet(() -> {
 			UserEntity created = users.save(UserEntity.create(
 				String.valueOf(request.getOrDefault("name", "신규 회원")),
@@ -171,8 +171,8 @@ public class CustomerApiController {
 		long startedAt = System.nanoTime();
 		String email = String.valueOf(request.getOrDefault("email", ""));
 		boolean accountExists = users.findByEmail(email).isPresent();
-		discovery.discover("jwt-auth", "predictable-password-reset-token");
-		discovery.maybeDiscover("jwt-auth", "account-enumeration", !blank(email));
+		discovery.discoverChallenge("VULN-041");
+		discovery.maybeDiscoverChallenge("VULN-032", !blank(email));
 		if (accountExists) {
 			diagnosticDelay(220);
 		}
@@ -200,7 +200,7 @@ public class CustomerApiController {
 			decoded = "invalid-base64";
 		}
 		Map<String, Object> payload = new LinkedHashMap<>(request);
-		discovery.discover("jwt-auth", "password-reset-token-accepted");
+		discovery.discoverChallenge("VULN-041");
 		payload.put("decodedToken", decoded);
 		payload.put("diagnosticNote", "VULN-041 accepts predictable reset token structure without server-side nonce lookup.");
 		return accepted("Password reset confirm API surface is ready.", payload);
@@ -208,7 +208,7 @@ public class CustomerApiController {
 
 	@PostMapping("/users/me/password")
 	public ApiResponse<Map<String, Object>> changePassword(@RequestBody Map<String, Object> request) {
-		discovery.discover("jwt-auth", "password-change-without-current");
+		discovery.discoverChallenge("VULN-022");
 		seedUsersIfEmpty();
 		String email = String.valueOf(request.getOrDefault("email", "user@vul.com"));
 		UserEntity user = users.findByEmail(email)
@@ -226,7 +226,7 @@ public class CustomerApiController {
 
 	@PostMapping(value = "/users/me/password", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
 	public ApiResponse<Map<String, Object>> changePasswordForm(@RequestParam Map<String, String> request) {
-		discovery.discover("csrf", "csrf-password-change");
+		discovery.discoverChallenge("VULN-027");
 		return changePassword(new LinkedHashMap<>(request));
 	}
 
@@ -259,8 +259,8 @@ public class CustomerApiController {
 				? users.findByEmail(email).orElseThrow()
 				: users.findAllByOrderByCreatedAtDesc().stream().findFirst().orElseThrow();
 		String requester = bearerSubject(servletRequest);
-		discovery.maybeDiscover("idor", "other-user-profile", !blank(requester) && !requester.equalsIgnoreCase(user.getEmail()));
-		discovery.discover("info-disclosure", "excessive-user-profile");
+		discovery.maybeDiscoverChallenge("VULN-010", !blank(requester) && !requester.equalsIgnoreCase(user.getEmail()));
+		discovery.discoverChallenge("VULN-048");
 		Map<String, Object> payload = userMap(user);
 		payload.put("diagnosticNote", "VULN-010 intentionally returns the requested profile without ownership validation.");
 		return accepted("My page profile API surface is ready.", payload);
@@ -279,8 +279,8 @@ public class CustomerApiController {
 		@RequestParam(defaultValue = "asc") String order
 	) {
 		if (!blank(keyword)) {
-			discovery.maybeDiscover("sqli", "product-search-sqli", VulnerabilityDiscoveryService.looksSqlInjected(keyword) || VulnerabilityDiscoveryService.looksSqlInjected(order));
-			discovery.maybeDiscover("xss", "reflected-search-xss", VulnerabilityDiscoveryService.looksXss(keyword));
+			discovery.maybeDiscoverChallenge("VULN-002", VulnerabilityDiscoveryService.looksSqlInjected(keyword) || VulnerabilityDiscoveryService.looksSqlInjected(order));
+			discovery.maybeDiscoverChallenge("VULN-008", VulnerabilityDiscoveryService.looksXss(keyword));
 			// VULN-002: keyword는 single-quote 이스케이프로 보호, order 파라미터는 ORDER BY에 직접 삽입
 			String safeKeyword = keyword.replace("'", "''");
 			String sql = "select product_code as id, category, brand, name, price, original_price as originalPrice, discount_rate as discount, rating, review_count as reviews, ranking as rank, description from products where name like '%" + safeKeyword + "%' or brand like '%" + safeKeyword + "%' or category like '%" + safeKeyword + "%' order by " + order;
@@ -302,7 +302,7 @@ public class CustomerApiController {
 
 	@GetMapping("/products/{productId}")
 	public ApiResponse<Map<String, Object>> productDetail(@PathVariable String productId, @RequestParam(required = false) String previewHtml) {
-		discovery.maybeDiscover("xss", "dom-xss-product-detail", VulnerabilityDiscoveryService.looksXss(previewHtml));
+		discovery.maybeDiscoverChallenge("VULN-009", VulnerabilityDiscoveryService.looksXss(previewHtml));
 		Map<String, Object> payload = productMap(resolveProduct(productId));
 		payload.put("previewHtml", previewHtml == null ? "" : previewHtml);
 		return accepted("Product detail API surface is ready.", payload);
@@ -329,7 +329,7 @@ public class CustomerApiController {
 
 	@PostMapping("/cart/items")
 	public ApiResponse<CommerceRecordEntity> addCartItem(@RequestBody Map<String, Object> request) {
-		discovery.maybeDiscover("coupon-payment", "cart-price-quantity-tampering", request.containsKey("price") || request.containsKey("unitPrice") || request.containsKey("quantity"));
+		discovery.maybeDiscoverChallenge("VULN-014", request.containsKey("price") || request.containsKey("unitPrice") || request.containsKey("quantity"));
 		return accepted("Cart add API surface is ready.", commerceRecords.save(record("CART", request, "ACTIVE")));
 	}
 
@@ -337,7 +337,7 @@ public class CustomerApiController {
 	public ApiResponse<CommerceRecordEntity> updateCartItem(@PathVariable long cartItemId, @RequestBody Map<String, Object> request) {
 		CommerceRecordEntity cartItem = commerceRecords.findById(cartItemId).orElseThrow();
 		Map<String, Object> payload = new LinkedHashMap<>(request);
-		discovery.maybeDiscover("coupon-payment", "cart-update-price-quantity", request.containsKey("price") || request.containsKey("unitPrice") || request.containsKey("quantity"));
+		discovery.maybeDiscoverChallenge("VULN-014", request.containsKey("price") || request.containsKey("unitPrice") || request.containsKey("quantity"));
 		payload.put("cartItemId", cartItemId);
 		payload.put("diagnosticNote", "VULN-014 accepts client supplied quantity and price fields without recalculation.");
 		cartItem.replacePayload(payload);
@@ -347,7 +347,7 @@ public class CustomerApiController {
 
 	@DeleteMapping("/cart/items/{cartItemId}")
 	public ApiResponse<Map<String, Object>> deleteCartItem(@PathVariable long cartItemId) {
-		discovery.discover("info-disclosure", "unnecessary-delete-method");
+		discovery.discoverChallenge("VULN-044");
 		boolean existed = commerceRecords.existsById(cartItemId);
 		if (existed) {
 			commerceRecords.deleteById(cartItemId);
@@ -365,11 +365,11 @@ public class CustomerApiController {
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		Object clientPaymentTotal = request.getOrDefault("paymentTotal", request.getOrDefault("amount", 0));
 		Object useMileage = request.getOrDefault("useMileage", 0);
-		discovery.maybeDiscover("coupon-payment", "payment-amount-tampering", request.containsKey("paymentTotal") || request.containsKey("amount"));
-		discovery.maybeDiscover("coupon-payment", "mileage-in-checkout-tampering", request.containsKey("useMileage"));
+		discovery.maybeDiscoverChallenge("VULN-013", request.containsKey("paymentTotal") || request.containsKey("amount"));
+		discovery.maybeDiscoverChallenge("VULN-036", request.containsKey("useMileage"));
 		int requestedQuantity = intValue(request.get("quantity"), 1);
 		int stockBefore = intValue(request.get("stockBefore"), 1);
-		discovery.maybeDiscover("business-logic", "oversell-inventory", requestedQuantity > stockBefore);
+		discovery.maybeDiscoverChallenge("VULN-030", requestedQuantity > stockBefore);
 		payload.put("stockBefore", stockBefore);
 		payload.put("requestedQuantity", requestedQuantity);
 		payload.put("stockAfter", stockBefore - requestedQuantity);
@@ -403,7 +403,7 @@ public class CustomerApiController {
 	@GetMapping("/orders/complete")
 	public ApiResponse<Map<String, Object>> orderComplete(@RequestParam String orderId, @RequestParam String amount, @RequestParam String userId) {
 		log.info("diagnostic order complete query orderId={} amount={} userId={}", orderId, amount, userId);
-		discovery.discover("info-disclosure", "sensitive-get-parameters");
+		discovery.discoverChallenge("VULN-049");
 		return accepted("Order completion data is ready.", nullableMap(
 			"orderId", orderId,
 			"amount", amount,
@@ -434,13 +434,13 @@ public class CustomerApiController {
 
 	@GetMapping("/orders/{orderId}")
 	public ApiResponse<List<Map<String, Object>>> orderDetail(@PathVariable String orderId, HttpServletRequest servletRequest) {
-		discovery.maybeDiscover("sqli", "order-detail-sqli", VulnerabilityDiscoveryService.looksSqlInjected(orderId));
+		discovery.maybeDiscoverChallenge("VULN-003", VulnerabilityDiscoveryService.looksSqlInjected(orderId));
 		// VULN-003: orderId가 SQL에 직접 삽입 — UNION SELECT 가능
 		// 에러는 suppressed 처리 → 컬럼 수를 trial-and-error로 파악해야 함 (난이도 상)
 		String sql = "select * from commerce_records where domain_type = 'ORDER' and record_key = '" + orderId + "'";
 		try {
 			List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
-			discovery.maybeDiscover("idor", "order-detail-idor", rows.stream().anyMatch(row -> differentOwner(servletRequest, stringColumn(row, "owner_key"))));
+			discovery.maybeDiscoverChallenge("VULN-011", rows.stream().anyMatch(row -> differentOwner(servletRequest, stringColumn(row, "owner_key"))));
 			return accepted("Order detail API surface is ready.", rows);
 		} catch (Exception ignored) {
 			return accepted("Order detail API surface is ready.", List.of());
@@ -449,7 +449,7 @@ public class CustomerApiController {
 
 	@RequestMapping(value = {"/products/{productId}", "/orders/{orderId}"}, method = RequestMethod.OPTIONS)
 	public ApiResponse<Map<String, Object>> resourceOptions() {
-		discovery.discover("info-disclosure", "unnecessary-http-methods");
+		discovery.discoverChallenge("VULN-044");
 		return accepted("Resource methods are enabled.", Map.of(
 			"allow", "GET,POST,PUT,DELETE,OPTIONS",
 			"diagnosticNote", "VULN-044 product and order resource paths expose unnecessary PUT/DELETE methods."
@@ -458,7 +458,7 @@ public class CustomerApiController {
 
 	@GetMapping("/orders/{orderId}/delivery")
 	public ApiResponse<Map<String, Object>> deliveryTracking(@PathVariable String orderId, HttpServletRequest servletRequest) {
-		discovery.maybeDiscover("sqli", "delivery-tracking-sqli", VulnerabilityDiscoveryService.looksSqlInjected(orderId));
+		discovery.maybeDiscoverChallenge("VULN-003", VulnerabilityDiscoveryService.looksSqlInjected(orderId));
 		String sql = "select * from commerce_records where record_key = '" + orderId + "'";
 		List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
 		Map<String, Object> response = new LinkedHashMap<>();
@@ -467,7 +467,7 @@ public class CustomerApiController {
 		response.put("diagnosticNote", "VULN-011 returns delivery data by order key without checking the requesting user.");
 		if (!rows.isEmpty()) {
 			Map<String, Object> row = rows.get(0);
-			discovery.maybeDiscover("idor", "delivery-tracking-idor", differentOwner(servletRequest, stringColumn(row, "owner_key")));
+			discovery.maybeDiscoverChallenge("VULN-011", differentOwner(servletRequest, stringColumn(row, "owner_key")));
 			response.put("status", stringColumn(row, "status"));
 			response.put("record", row);
 		} else {
@@ -486,7 +486,7 @@ public class CustomerApiController {
 	public ApiResponse<CommerceRecordEntity> redeemCoupon(@RequestBody Map<String, Object> request, HttpServletRequest servletRequest) {
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		String couponCode = String.valueOf(request.getOrDefault("couponCode", request.getOrDefault("code", "WELCOME15")));
-		discovery.maybeDiscover("coupon-payment", "coupon-code-bruteforce", !blank(couponCode));
+		discovery.maybeDiscoverChallenge("VULN-035", !blank(couponCode));
 		String userEmail = owner(payload);
 		long alreadyUsed = commerceRecords.findByDomainTypeAndOwnerKeyOrderByCreatedAtDesc("COUPON_USE", userEmail).stream()
 			.filter(record -> record.getRecordKey().startsWith("coupon-use-" + couponCode))
@@ -494,8 +494,8 @@ public class CustomerApiController {
 		payload.put("couponCode", couponCode);
 		payload.put("usesBefore", alreadyUsed);
 		String forwardedFor = servletRequest.getHeader("X-Forwarded-For");
-		discovery.maybeDiscover("coupon-payment", "coupon-ratelimit-bypass", forwardedFor != null && !forwardedFor.isBlank());
-		discovery.discover("business-logic", "duplicate-coupon-race");
+		discovery.maybeDiscoverChallenge("VULN-035", forwardedFor != null && !forwardedFor.isBlank());
+		discovery.discoverChallenge("VULN-029");
 		payload.put("rateLimitKey", forwardedFor == null ? "direct" : forwardedFor);
 		payload.put("rateLimitBypassed", forwardedFor != null && !forwardedFor.isBlank());
 		diagnosticDelay(180);
@@ -518,7 +518,7 @@ public class CustomerApiController {
 
 	@PostMapping("/mileage/use")
 	public ApiResponse<CommerceRecordEntity> useMileage(@RequestBody Map<String, Object> request) {
-		discovery.discover("coupon-payment", "mileage-parameter-tampering");
+		discovery.discoverChallenge("VULN-036");
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		payload.put("useMileage", request.getOrDefault("useMileage", request.getOrDefault("amount", 0)));
 		payload.put("diagnosticNote", "VULN-036 applies caller supplied mileage amount without checking balance.");
@@ -539,7 +539,7 @@ public class CustomerApiController {
 	public ApiResponse<Map<String, Object>> previewEventBanner(@RequestBody Map<String, Object> request) {
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		String imageUrl = String.valueOf(request.getOrDefault("imageUrl", request.getOrDefault("url", "")));
-		discovery.maybeDiscover("ssrf", "event-banner-ssrf", VulnerabilityDiscoveryService.looksSsrf(imageUrl));
+		discovery.maybeDiscoverChallenge("VULN-025", VulnerabilityDiscoveryService.looksSsrf(imageUrl));
 		payload.put("ssrfProbe", fetchUrlProbe(imageUrl));
 		payload.put("diagnosticNote", "VULN-025 fetches the supplied external image URL server-side.");
 		return accepted("External banner preview API surface is ready.", payload);
@@ -562,7 +562,7 @@ public class CustomerApiController {
 
 	@PostMapping(value = "/wishlist/{productId}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
 	public ApiResponse<CommerceRecordEntity> addWishlistForm(@PathVariable String productId, @RequestParam Map<String, String> request) {
-		discovery.discover("csrf", "csrf-wishlist-form");
+		discovery.discoverChallenge("VULN-028");
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		payload.put("productId", productId);
 		payload.put("diagnosticNote", "VULN-028 accepts simple form request without CSRF token.");
@@ -607,7 +607,7 @@ public class CustomerApiController {
 
 	@PostMapping(value = "/likes/{targetType}/{targetId}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
 	public ApiResponse<CommerceRecordEntity> likeForm(@PathVariable String targetType, @PathVariable String targetId, @RequestParam Map<String, String> request) {
-		discovery.discover("csrf", "csrf-like-form");
+		discovery.discoverChallenge("VULN-028");
 		Map<String, Object> body = new LinkedHashMap<>(request);
 		body.put("targetType", targetType);
 		body.put("targetId", targetId);
@@ -624,7 +624,7 @@ public class CustomerApiController {
 	public ApiResponse<Map<String, Object>> createCommunityPost(@RequestBody Map<String, Object> request) {
 		String title = String.valueOf(request.getOrDefault("title", ""));
 		String body = String.valueOf(request.getOrDefault("body", ""));
-		discovery.maybeDiscover("xss", "stored-community-xss", VulnerabilityDiscoveryService.looksXss(title) || VulnerabilityDiscoveryService.looksXss(body));
+		discovery.maybeDiscoverChallenge("VULN-005", VulnerabilityDiscoveryService.looksXss(title) || VulnerabilityDiscoveryService.looksXss(body));
 		// VULN-005: <script> 태그만 차단, 이벤트 핸들러(onerror 등)는 미필터링
 		CommunityPostEntity post = CommunityPostEntity.create(
 			title,
@@ -639,7 +639,7 @@ public class CustomerApiController {
 
 	@PostMapping(value = "/community/posts", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
 	public ApiResponse<Map<String, Object>> createCommunityPostForm(@RequestParam Map<String, String> request) {
-		discovery.discover("csrf", "csrf-community-write");
+		discovery.discoverChallenge("VULN-026");
 		return createCommunityPost(new LinkedHashMap<>(request));
 	}
 
@@ -651,7 +651,7 @@ public class CustomerApiController {
 
 	@PostMapping(value = "/community/posts/{postId}/delete", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
 	public ApiResponse<Map<String, Object>> deleteCommunityPostForm(@PathVariable long postId) {
-		discovery.discover("csrf", "csrf-community-delete");
+		discovery.discoverChallenge("VULN-026");
 		communityPosts.deleteById(postId);
 		return accepted("Community post deleted.", Map.of("postId", postId, "deleted", true, "diagnosticNote", "VULN-026 delete accepts simple form request without CSRF token."));
 	}
@@ -660,7 +660,7 @@ public class CustomerApiController {
 	public ApiResponse<Map<String, Object>> createCommunityComment(@PathVariable long postId, @RequestBody Map<String, Object> request) {
 		CommunityPostEntity post = communityPosts.findById(postId).orElseThrow();
 		String body = String.valueOf(request.getOrDefault("body", ""));
-		discovery.maybeDiscover("xss", "stored-comment-xss", VulnerabilityDiscoveryService.looksXss(body));
+		discovery.maybeDiscoverChallenge("VULN-005", VulnerabilityDiscoveryService.looksXss(body));
 		// VULN-005 동일 필터 적용
 		post.addComment(
 			String.valueOf(request.getOrDefault("author", request.getOrDefault("authorNickname", "익명"))),
@@ -680,7 +680,7 @@ public class CustomerApiController {
 	public ApiResponse<Map<String, Object>> createReview(@PathVariable String productId, @RequestBody Map<String, Object> request) {
 		ProductEntity product = resolveProduct(productId);
 		String body = String.valueOf(request.getOrDefault("body", ""));
-		discovery.maybeDiscover("xss", "stored-review-xss", VulnerabilityDiscoveryService.looksXss(body));
+		discovery.maybeDiscoverChallenge("VULN-006", VulnerabilityDiscoveryService.looksXss(body));
 		// VULN-006: <script> 태그만 차단, 이벤트 핸들러(javascript: href 등)는 미필터링
 		ReviewEntity review = ReviewEntity.create(
 			product,
@@ -697,8 +697,8 @@ public class CustomerApiController {
 	public ApiResponse<Map<String, Object>> createReviewWithFile(@PathVariable String productId, @RequestParam MultipartFile file, @RequestParam(defaultValue = "리뷰어") String nickname, @RequestParam(defaultValue = "5") Double rating, @RequestParam(defaultValue = "") String body) {
 		ProductEntity product = resolveProduct(productId);
 		String filename = file.getOriginalFilename() == null ? "review-upload" : file.getOriginalFilename();
-		discovery.maybeDiscover("file-upload", "review-upload-webshell", VulnerabilityDiscoveryService.suspiciousFile(filename, file.getContentType()));
-		discovery.maybeDiscover("xss", "review-filename-xss", VulnerabilityDiscoveryService.looksXss(filename));
+		discovery.maybeDiscoverChallenge("VULN-017", VulnerabilityDiscoveryService.suspiciousFile(filename, file.getContentType()));
+		discovery.maybeDiscoverChallenge("VULN-006", VulnerabilityDiscoveryService.looksXss(filename));
 		String storedPath = "/uploads/reviews/" + filename;
 		ReviewEntity review = ReviewEntity.create(product, nickname, rating, body, storedPath, LocalDateTime.now());
 		ReviewEntity saved = reviews.save(review);
@@ -719,8 +719,8 @@ public class CustomerApiController {
 
 	@PostMapping("/products/{productId}/inquiries")
 	public ApiResponse<CommerceRecordEntity> createProductInquiry(@PathVariable String productId, @RequestBody Map<String, Object> request, HttpServletRequest servletRequest) {
-		discovery.maybeDiscover("idor", "product-inquiry-idor", request.containsKey("ownerEmail") && differentOwner(servletRequest, String.valueOf(request.get("ownerEmail"))));
-		discovery.maybeDiscover("xss", "product-inquiry-xss", VulnerabilityDiscoveryService.looksXss(String.valueOf(request.getOrDefault("title", ""))) || VulnerabilityDiscoveryService.looksXss(String.valueOf(request.getOrDefault("body", ""))));
+		discovery.maybeDiscoverChallenge("VULN-012", request.containsKey("ownerEmail") && differentOwner(servletRequest, String.valueOf(request.get("ownerEmail"))));
+		discovery.maybeDiscoverChallenge("VULN-007", VulnerabilityDiscoveryService.looksXss(String.valueOf(request.getOrDefault("title", ""))) || VulnerabilityDiscoveryService.looksXss(String.valueOf(request.getOrDefault("body", ""))));
 		Map<String, Object> payload = nullableMap("productId", productId, "request", request);
 		return accepted("Product inquiry create API surface is ready.", commerceRecords.save(CommerceRecordEntity.create("PRODUCT_INQUIRY", owner(request), "product-" + productId + "-" + Instant.now().toEpochMilli(), "PENDING", payload)));
 	}
@@ -738,19 +738,19 @@ public class CustomerApiController {
 		CommerceRecordEntity inquiry = inquiryId.matches("\\d+")
 			? commerceRecords.findById(Long.parseLong(inquiryId)).orElseThrow()
 			: commerceRecords.findByRecordKey(inquiryId).orElseThrow();
-		discovery.maybeDiscover("idor", "cs-inquiry-idor", differentOwner(servletRequest, inquiry.getOwnerKey()));
+		discovery.maybeDiscoverChallenge("VULN-012", differentOwner(servletRequest, inquiry.getOwnerKey()));
 		return accepted("CS inquiry detail API surface is ready.", inquiry);
 	}
 
 	@PostMapping(value = "/cs/inquiries", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
 	public ApiResponse<CommerceRecordEntity> createCsInquiry(@RequestParam Map<String, String> request) {
-		discovery.maybeDiscover("xss", "cs-inquiry-form-xss", VulnerabilityDiscoveryService.looksXss(String.valueOf(request.get("title"))) || VulnerabilityDiscoveryService.looksXss(String.valueOf(request.get("body"))));
+		discovery.maybeDiscoverChallenge("VULN-007", VulnerabilityDiscoveryService.looksXss(String.valueOf(request.get("title"))) || VulnerabilityDiscoveryService.looksXss(String.valueOf(request.get("body"))));
 		return accepted("CS inquiry create API surface is ready.", commerceRecords.save(record("CS_INQUIRY", new LinkedHashMap<>(request), "PENDING")));
 	}
 
 	@PostMapping(value = "/cs/inquiries", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ApiResponse<CommerceRecordEntity> createCsInquiryJson(@RequestBody Map<String, Object> request) {
-		discovery.maybeDiscover("xss", "cs-inquiry-json-xss", VulnerabilityDiscoveryService.looksXss(String.valueOf(request.get("title"))) || VulnerabilityDiscoveryService.looksXss(String.valueOf(request.get("body"))));
+		discovery.maybeDiscoverChallenge("VULN-007", VulnerabilityDiscoveryService.looksXss(String.valueOf(request.get("title"))) || VulnerabilityDiscoveryService.looksXss(String.valueOf(request.get("body"))));
 		return accepted("CS inquiry create API surface is ready.", commerceRecords.save(record("CS_INQUIRY", new LinkedHashMap<>(request), "PENDING")));
 	}
 
@@ -763,8 +763,8 @@ public class CustomerApiController {
 		if (attachment != null && attachment.getOriginalFilename() != null) {
 			// VULN-007: 첨부파일명을 검증 없이 저장 → 관리자 CS 화면에서 HTML로 렌더링 시 XSS 발동
 			String filename = attachment.getOriginalFilename();
-			discovery.maybeDiscover("file-upload", "cs-attachment-upload", VulnerabilityDiscoveryService.suspiciousFile(filename, attachment.getContentType()));
-			discovery.maybeDiscover("xss", "cs-attachment-filename-xss", VulnerabilityDiscoveryService.looksXss(filename));
+			discovery.maybeDiscoverChallenge("VULN-039", VulnerabilityDiscoveryService.suspiciousFile(filename, attachment.getContentType()));
+			discovery.maybeDiscoverChallenge("VULN-007", VulnerabilityDiscoveryService.looksXss(filename));
 			payload.put("attachmentName", filename);
 			payload.put("attachmentContentType", attachment.getContentType());
 			Path uploadDir = Path.of(System.getProperty("java.io.tmpdir"), "vul-uploads", "cs");
@@ -778,7 +778,7 @@ public class CustomerApiController {
 	@PostMapping(value = "/files/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ApiResponse<CommerceRecordEntity> uploadFile(@RequestParam MultipartFile file, @RequestParam(defaultValue = "community") String usage, @RequestParam String userEmail) throws java.io.IOException {
 		String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload-" + Instant.now().toEpochMilli();
-		discovery.maybeDiscover("file-upload", "generic-file-upload", VulnerabilityDiscoveryService.suspiciousFile(filename, file.getContentType()));
+		discovery.maybeDiscoverChallenge("VULN-039", VulnerabilityDiscoveryService.suspiciousFile(filename, file.getContentType()));
 		Path uploadDir = Path.of(System.getProperty("java.io.tmpdir"), "vul-uploads", usage);
 		Files.createDirectories(uploadDir);
 		Files.write(uploadDir.resolve(filename), file.getBytes());
@@ -860,7 +860,7 @@ public class CustomerApiController {
 	@GetMapping("/files/download")
 	public ApiResponse<Map<String, Object>> downloadFile(@RequestParam String file) {
 		String decoded = URLDecoder.decode(file, StandardCharsets.UTF_8);
-		discovery.maybeDiscover("info-disclosure", "path-traversal-download", decoded.contains("..") || decoded.startsWith("/") || decoded.contains("\\"));
+		discovery.maybeDiscoverChallenge("VULN-024", decoded.contains("..") || decoded.startsWith("/") || decoded.contains("\\"));
 		Path path = Path.of(decoded);
 		Map<String, Object> payload = new LinkedHashMap<>();
 		payload.put("requested", file);
