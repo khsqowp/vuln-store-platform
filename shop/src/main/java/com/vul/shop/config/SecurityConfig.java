@@ -1,5 +1,6 @@
 package com.vul.shop.config;
 
+import com.vul.shop.api.VulnerabilityDiscoveryService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +20,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
 public class SecurityConfig {
+	private final VulnerabilityDiscoveryService discovery;
+
+	public SecurityConfig(VulnerabilityDiscoveryService discovery) {
+		this.discovery = discovery;
+	}
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -27,7 +33,7 @@ public class SecurityConfig {
 			.cors(cors -> cors.configurationSource(corsConfigurationSource()))
 			.headers(headers -> headers.frameOptions(frame -> frame.disable()))
 			.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-			.addFilterBefore(new DiagnosticJwtFilter(), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
+			.addFilterBefore(new DiagnosticJwtFilter(discovery), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
 			.build();
 	}
 
@@ -50,9 +56,24 @@ public class SecurityConfig {
 	}
 
 	static class DiagnosticJwtFilter extends OncePerRequestFilter {
+		private final VulnerabilityDiscoveryService discovery;
+
+		DiagnosticJwtFilter(VulnerabilityDiscoveryService discovery) {
+			this.discovery = discovery;
+		}
+
 		@Override
 		protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 			String path = request.getRequestURI();
+			String origin = request.getHeader("Origin");
+			if (origin != null && (origin.endsWith(".shop.com") || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:"))) {
+				discovery.discover("info-disclosure", "weak-cors-configuration");
+			}
+			discovery.discover("info-disclosure", "response-header-disclosure");
+			if (path.startsWith("/api/users/me") || path.startsWith("/api/orders/checkout")) {
+				discovery.discover("info-disclosure", "weak-cache-control");
+			}
+			discovery.discover("info-disclosure", "clickjacking-frame-options-disabled");
 			response.setHeader("Server", "Apache Tomcat/10.1.54");
 			response.setHeader("X-Powered-By", "Spring Boot 3.5.14");
 			response.setHeader("X-Application-Context", "vul-shop:8100");
@@ -62,6 +83,9 @@ public class SecurityConfig {
 			}
 			if ("OPTIONS".equalsIgnoreCase(request.getMethod()) && (path.startsWith("/api/products/") || path.startsWith("/api/orders/"))) {
 				response.setHeader("Allow", "GET,POST,PUT,DELETE,OPTIONS");
+			}
+			if (path.startsWith("/api/admin") && diagnosticAdminBypass(request)) {
+				discovery.discover("access-control", "admin-auth-bypass-debug-header");
 			}
 			if (path.startsWith("/api/admin") && !diagnosticAdminBypass(request) && !tokenContains(request, "\"role\":\"ADMIN\"")) {
 				response.sendError(HttpServletResponse.SC_FORBIDDEN, "diagnostic admin token required");

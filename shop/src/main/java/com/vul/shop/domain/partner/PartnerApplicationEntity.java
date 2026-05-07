@@ -67,6 +67,10 @@ public class PartnerApplicationEntity {
 		this.status = "REVOKED";
 	}
 
+	public void suspend() {
+		this.status = "SUSPENDED";
+	}
+
 	private static String stringValue(Map<String, Object> request, String key) {
 		return String.valueOf(request.getOrDefault(key, ""));
 	}

@@ -359,51 +359,6 @@ function withDetailImages(product, index) {
   };
 }
 
-function createGeneratedProduct(category, index, rankOffset) {
-  const names = categoryNameParts[category];
-  const price = 24000 + ((index * 7300) % 118000);
-  const discount = 10 + ((index * 7) % 31);
-  const baseName = names[index % names.length];
-  const name = `${productNameModifiers[index % productNameModifiers.length]} ${productNameMaterials[category][(index * 3) % productNameMaterials[category].length]} ${baseName} ${productNameColors[(index * 5 + rankOffset) % productNameColors.length]}`;
-  const id = `p-${category}-${String(index + 1).padStart(3, '0')}`;
-  return withDetailImages({
-    id,
-    category,
-    brand: categoryBrands[index % categoryBrands.length],
-    name,
-    price,
-    originalPrice: Math.round(price / (1 - discount / 100) / 1000) * 1000,
-    discount,
-    rating: Number((4.3 + ((index % 7) * 0.1)).toFixed(1)),
-    reviews: 120 + ((index * 137) % 9300),
-    rank: rankOffset + index,
-    tags: index % 3 === 0 ? ['recommend', 'sale'] : index % 3 === 1 ? ['ranking'] : ['event'],
-    description: `${names[index % names.length]} 특유의 안정적인 핏과 데일리 활용도를 갖춘 상품입니다. 카테고리별 추천 상품으로 상세 이미지와 함께 확인할 수 있습니다.`,
-    image: remoteFashionImage(category, name, id, 0),
-    detailImages: [
-      remoteFashionImage(category, name, id, 1),
-      remoteFashionImage(category, name, id, 2),
-      remoteFashionImage(category, name, id, 3),
-      remoteFashionImage(category, name, id, 4),
-    ],
-  }, index);
-}
-
-function buildProducts() {
-  const categoriesToFill = ['outer', 'top', 'pants', 'sneakers'];
-  const seeded = baseProducts.map(withDetailImages);
-  const generated = [];
-
-  categoriesToFill.forEach((category, categoryIndex) => {
-    const currentCount = seeded.filter((product) => product.category === category).length;
-    for (let index = 0; index < 50 - currentCount; index += 1) {
-      generated.push(createGeneratedProduct(category, index, 100 + categoryIndex * 60 + index));
-    }
-  });
-
-  return [...seeded, ...generated];
-}
-
 function withRankingSignals(product, index) {
   const currentViews = product.reviews * 3 + ((product.rank + index) * 127);
   const previousViews = Math.max(1, currentViews - (((index % 9) - 4) * 83) - 210);
@@ -429,8 +384,6 @@ function applyLiveRanks(items) {
     .sort((a, b) => a.rank - b.rank);
 }
 
-const products = [];
-
 const benefitItems = [
   '신규 회원 15% 쿠폰',
   '오늘 출발 상품 모아보기',
@@ -440,133 +393,7 @@ const benefitItems = [
   '마일리지 2배 적립',
 ];
 
-const couponCatalog = [
-  { id: 'cp-new-15', title: '신규 회원 15% 할인', detail: '첫 구매 5만원 이상 사용 가능', discount: '15%', status: 'available' },
-  { id: 'cp-free-ship', title: '무료배송 쿠폰', detail: '전 상품 배송비 무료', discount: '배송비', status: 'available' },
-  { id: 'cp-weekend-10', title: '주말 특가 10% 할인', detail: '세일 상품 중복 적용 가능', discount: '10%', status: 'available' },
-  { id: 'cp-ranking-7', title: '랭킹 상품 7% 할인', detail: '랭킹 100위 내 상품 적용', discount: '7%', status: 'available' },
-  { id: 'cp-mileage', title: '마일리지 2배 적립권', detail: '주문 완료 시 자동 적립', discount: '2배', status: 'available' },
-];
-
-const communityTopics = [
-  '오늘 출근룩 이 정도면 무난?',
-  '블루종 사이즈 고민 중인데 조언 좀',
-  '와이드 데님에 어울리는 신발 추천해줘',
-  '주말에 입을 셔츠 골라봤는데 어때',
-  '요즘 트렌치 코트 아직 입어도 되나',
-  '러닝화 데일리로 신어본 사람?',
-  '후드 색상 그레이랑 네이비 중에 뭐가 나아',
-  '세일 상품 중에 이건 진짜 괜찮아 보임',
-  '기본 긴팔티 핏 좋은 브랜드 찾았다',
-  '카고 팬츠 처음 사보는데 코디 어렵네',
-  '비 오는 날 신을 스니커즈 골라봤어',
-  '니트 집업 살까 말까 계속 고민 중',
-  '흰 셔츠 안 비치는 제품 추천 받아',
-  '조거 팬츠 핏 봐줄 사람',
-  '면접룩 너무 딱딱해 보이나?',
-];
-const communityBodies = [
-  '사진으로 볼 땐 괜찮은데 실제로 입으면 느낌 다를까 봐 고민됨. 비슷한 핏 입어본 사람 후기 좀.',
-  '상의는 넉넉하게 가는 편인데 이번엔 너무 커 보일까 봐 망설이는 중. 한 사이즈 다운이 맞나?',
-  '요즘 편한 코디만 찾게 돼서 데일리로 돌려입을 조합 찾고 있음. 색 조합 괜찮으면 바로 살 듯.',
-  '후기 보니까 원단은 좋아 보이는데 계절감이 애매하다는 말도 있더라. 지금 사도 뽕 뽑을 수 있을까?',
-  '가격 내려갔길래 장바구니 넣어놨는데 마지막으로 커뮤니티 의견 듣고 결제하려고.',
-  '실착 사진이 생각보다 적어서 여기 올려봄. 무난한지 아니면 너무 튀는지 말해줘.',
-  '친구는 괜찮다는데 내 눈에는 살짝 과한 느낌이라 객관적인 의견 필요함.',
-];
-const communityImages = [
-  'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1523398002811-999ca8dec234?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1516826957135-700dedea698c?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=901&q=80',
-  'https://images.unsplash.com/photo-1551232864-3f0890e580d9?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1495385794356-15371f348c31?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1506629905607-d9c297d5f5f8?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=900&q=80',
-];
-const communityNicknames = [
-  '핏감연구소', '셔츠덕후', '데님수집가', '신발장만렙', '오늘도블랙', '미니멀러버', '아우터고민러', '출근룩장인', '주말코디러', '세일탐정',
-  '후드좋아함', '니트입문자', '스니커즈헌터', '카고처음', '트렌치러버', '무채색성애자', '실착요정', '사이즈고민중', '핏체크부탁', '데일리민수',
-  '코튼홀릭', '러닝화러버', '와이드팬츠러', '가디건좋아', '옷잘알되고싶다', '간절기준비', '기본템수집', '레이어드초보', '후기읽는사람', '청바지찾는중',
-  '모노톤러', '스트릿입문', '단정한코디', '컬러매치중', '장바구니폭주', '오늘뭐입지', '실패없는코디', '신상구경러', '쿠폰기다림', '반품고민러',
-  '사이즈업할까', '오버핏좋아', '미드솔관찰자', '면접룩준비', '편한옷최고', '날씨보고입음', '봄아우터찾음', '코디저장소', '룩북보는중', '패션초보탈출',
-];
-
-function relativePostTime(index) {
-  const minutes = 7 + index * 19;
-  if (minutes < 60) return `${minutes}분 전`;
-  if (minutes < 1440) return `${Math.floor(minutes / 60)}시간 ${minutes % 60}분 전`;
-  return `${Math.floor(minutes / 1440)}일 ${Math.floor((minutes % 1440) / 60)}시간 전`;
-}
-
-const communityPostsSeed = communityNicknames.flatMap((author, authorIndex) => (
-  Array.from({ length: 1 + (authorIndex % 3) }, (_, postIndex) => {
-    const index = authorIndex * 3 + postIndex;
-    return {
-      id: `c-${index + 1}`,
-      title: communityTopics[index % communityTopics.length],
-      body: communityBodies[(index + authorIndex) % communityBodies.length],
-      author,
-      image: communityImages[index % communityImages.length],
-      likes: 12 + ((index * 7) % 230),
-      comments: 1 + ((index * 3) % 48),
-      createdAt: relativePostTime(index),
-      replies: [
-        '핏 괜찮아 보이는데 신발만 밝은 걸로 가도 좋을 듯!',
-        '이 조합이면 데일리로 충분함. 나였으면 바로 입고 나감.',
-        '상의 살짝 넣어 입으면 비율 더 좋아 보일 것 같아.',
-      ].slice(0, 1 + (index % 3)),
-    };
-  })
-));
-
 const formatPrice = (value) => `${value.toLocaleString('ko-KR')}원`;
-
-const reviewNickPrefixes = [
-  '핏체크', '데님러', '셔츠러버', '스니커즈팬', '미니멀핏', '출근룩', '주말룩', '사이즈고민', '원단중요', '컬러매치',
-  '후기탐정', '실착러', '간절기룩', '기본템러', '세일헌터', '리뷰장인', '옷장업뎃', '데일리웨어', '무채색러', '핏좋음',
-];
-const reviewFitWords = ['정사이즈', '살짝 여유', '오버핏', '깔끔한 핏', '편한 실루엣', '단정한 라인'];
-const reviewColorWords = ['화면과 거의 같음', '실물이 조금 더 차분함', '자연광에서 더 예쁨', '코디하기 쉬운 색', '톤이 안정적임'];
-const reviewTextureWords = ['원단이 탄탄함', '촉감이 부드러움', '가볍게 입기 좋음', '구김이 적은 편', '마감이 깔끔함'];
-const reviewUseWords = ['출근룩에 좋음', '주말에 자주 입음', '여행 갈 때 챙기기 좋음', '기본템으로 괜찮음', '데일리로 손이 자주 감'];
-
-function createProductReviews(product, limit = 12) {
-  const count = product.reviews;
-  const visibleCount = Math.min(count, limit);
-  return Array.from({ length: visibleCount }, (_, index) => {
-    const serial = `${product.id.replace(/\W/g, '')}-${String(index + 1).padStart(5, '0')}`;
-    const fit = reviewFitWords[(index + product.rank) % reviewFitWords.length];
-    const color = reviewColorWords[(index * 2 + product.rank) % reviewColorWords.length];
-    const texture = reviewTextureWords[(index * 3 + product.rank) % reviewTextureWords.length];
-    const use = reviewUseWords[(index * 5 + product.rank) % reviewUseWords.length];
-    return {
-      id: `rv-${serial}`,
-      nickname: `${reviewNickPrefixes[index % reviewNickPrefixes.length]}${serial}`,
-      rating: Number((4.3 + ((index + product.rank) % 7) * 0.1).toFixed(1)),
-      body: `${product.name} ${index + 1}번째 실착 후기입니다. ${fit}이고 ${color}. ${texture}이라 ${use}. 주문번호 기준 리뷰라 내용이 반복되지 않게 기록했습니다.`,
-      image: remoteFashionImage(product.category, `${product.name} 리뷰`, `${product.id}-review-${index}`, (index % 5) + 5, 800, 800),
-      createdAt: `${1 + ((index + product.rank) % 28)}일 전`,
-    };
-  });
-}
 
 const fallbackImage = (label) => {
   const safeLabel = encodeURIComponent(label);
@@ -593,9 +420,78 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+const getCookie = (name) => document.cookie
+  .split('; ')
+  .find((row) => row.startsWith(`${name}=`))
+  ?.split('=')
+  .slice(1)
+  .join('=') || '';
+
+const formHeaders = () => ({
+  'Content-Type': 'application/x-www-form-urlencoded',
+});
+
 const adminHeaders = () => ({
   Authorization: `Bearer ${safeJson(localStorage.getItem('vulshop.admin')).token || localStorage.getItem('vulshop.jwt') || ''}`,
 });
+
+const dangerousPayloadPattern = /<\s*script|onerror\s*=|onload\s*=|javascript:/i;
+
+async function reportDiscovery(bucketKey, signal = 'manual') {
+  const response = await fetch(`/api/easter-egg/progress/${encodeURIComponent(bucketKey)}/discover`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ signal }),
+  });
+  const payload = await response.json();
+  if (payload?.data?.newlyFound) {
+    window.dispatchEvent(new CustomEvent('vulshop:fanfare', { detail: payload.data }));
+  }
+  return payload?.data;
+}
+
+function installDiscoveryFetchMonitor() {
+  if (window.__vulshopFetchMonitorInstalled) return;
+  window.__vulshopFetchMonitorInstalled = true;
+  const nativeFetch = window.fetch.bind(window);
+  let baseline = null;
+  let pending = false;
+
+  const readProgress = async ({ announce } = { announce: false }) => {
+    try {
+      const response = await nativeFetch('/api/easter-egg/progress');
+      const payload = await response.json();
+      const next = Array.isArray(payload?.data?.buckets) ? payload.data.buckets : [];
+      if (announce && baseline) {
+        const previous = new Map(baseline.map((item) => [item.key, item.found]));
+        const changed = next.find((item) => item.found > (previous.get(item.key) || 0));
+        if (changed) {
+          window.dispatchEvent(new CustomEvent('vulshop:fanfare', {
+            detail: { label: changed.label, found: changed.found, total: changed.total, newlyFound: true },
+          }));
+        }
+      }
+      baseline = next;
+    } catch {
+      // Discovery progress must never break normal shopping flows.
+    } finally {
+      pending = false;
+    }
+  };
+
+  readProgress({ announce: false });
+  window.fetch = async (...args) => {
+    const response = await nativeFetch(...args);
+    const url = String(args[0]?.url || args[0] || '');
+    if (!url.includes('/api/easter-egg/progress') && url.includes('/api/')) {
+      if (!pending) {
+        pending = true;
+        window.setTimeout(() => readProgress({ announce: true }), 250);
+      }
+    }
+    return response;
+  };
+}
 
 const loadStoredUser = () => {
   try {
@@ -641,6 +537,22 @@ function App() {
   const [userCoupons, setUserCoupons] = useState([]);
   const [loginRedirect, setLoginRedirect] = useState('/mypage');
   const [lastOrderKey, setLastOrderKey] = useState(localStorage.getItem('vulshop.lastOrderKey') || '');
+  const [fanfare, setFanfare] = useState(null);
+
+  React.useEffect(() => {
+    installDiscoveryFetchMonitor();
+    window.vulshopFound = (bucketKey = 'xss', signal = 'manual-xss-callback') => reportDiscovery(bucketKey, signal);
+    const listener = (event) => {
+      setFanfare(event.detail);
+      window.setTimeout(() => setFanfare(null), 2800);
+    };
+    window.addEventListener('vulshop:fanfare', listener);
+    return () => {
+      window.removeEventListener('vulshop:fanfare', listener);
+      delete window.vulshopFound;
+    };
+  }, []);
+  const [quickBuyItem, setQuickBuyItem] = useState(null);
 
   React.useEffect(() => {
     const handlePopState = () => {
@@ -656,13 +568,32 @@ function App() {
   React.useEffect(() => {
     if (!user?.email) {
       setSellerApproved(false);
+      setUserCoupons([]);
+      setCart([]);
+      setWishlist([]);
       return;
     }
     fetch(`/api/seller/status?email=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
       .then((response) => response.ok ? response.json() : null)
       .then((payload) => setSellerApproved(Boolean(payload?.data?.seller || user.role === 'SELLER')))
       .catch(() => setSellerApproved(user.role === 'SELLER'));
+    fetch(`/api/coupons?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => setUserCoupons(Array.isArray(payload?.data) ? payload.data.map(couponFromRecord) : []))
+      .catch(() => setUserCoupons([]));
   }, [user]);
+
+  React.useEffect(() => {
+    if (!user?.email) return;
+    fetch(`/api/cart?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('cart api failed')))
+      .then((payload) => setCart(Array.isArray(payload?.data) ? payload.data.map((record) => cartItemFromRecord(record, catalogProducts)) : []))
+      .catch(() => setCart([]));
+    fetch(`/api/wishlist?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('wishlist api failed')))
+      .then((payload) => setWishlist(Array.isArray(payload?.data) ? payload.data.map((record) => wishlistProductFromRecord(record, catalogProducts)) : []))
+      .catch(() => setWishlist([]));
+  }, [user, catalogProducts]);
 
   React.useEffect(() => {
     fetch('/api/products')
@@ -715,45 +646,150 @@ function App() {
     return false;
   };
 
-  const addToCart = (product, quantity = 1) => {
+  const addToCart = async (product, quantity = 1, size = 'M', nextPath = '/cart') => {
     if (!user) {
       requireLogin(path.startsWith('/products/') ? path : '/cart', '상품 구매와 장바구니 담기는 회원만 이용할 수 있습니다.');
       return;
     }
-    setCart((items) => {
-      const existing = items.find((item) => item.product.id === product.id);
-      if (existing) {
-        return items.map((item) => (
-          item.product.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
-        ));
-      }
-      return [...items, { product, quantity }];
+    const existing = cart.find((item) => item.product.id === product.id && item.size === size);
+    if (existing) {
+      await updateCartQuantity(existing, existing.quantity + quantity);
+      navigate(nextPath);
+      return;
+    }
+    const response = await fetch('/api/cart/items', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userEmail: user.email,
+        productId: product.id,
+        productName: product.name,
+        productImage: product.image,
+        brand: product.brand,
+        price: product.price,
+        quantity,
+        size,
+      }),
     });
-    navigate('/cart');
+    const payload = await response.json();
+    if (!response.ok) {
+      window.alert(payload.message || '장바구니 저장에 실패했습니다.');
+      return;
+    }
+    setCart((items) => [cartItemFromRecord(payload.data, catalogProducts), ...items]);
+    navigate(nextPath);
   };
 
-  const updateCartQuantity = (productId, quantity) => {
-    setCart((items) => items
-      .map((item) => (item.product.id === productId ? { ...item, quantity } : item))
-      .filter((item) => item.quantity > 0));
+  const quickBuy = (product, quantity, size) => {
+    if (!user) {
+      requireLogin('/checkout', '상품 구매는 회원만 이용할 수 있습니다.');
+      return;
+    }
+    setQuickBuyItem({ product, quantity, size: size || 'M', recordId: null });
+    navigate('/checkout');
   };
 
-  const toggleWishlist = (product) => {
+  const updateCartQuantity = async (targetItem, quantity) => {
+    const item = typeof targetItem === 'object' ? targetItem : cart.find((entry) => entry.product.id === targetItem);
+    if (!item) return;
+    if (quantity <= 0) {
+      await removeCartItem(item);
+      return;
+    }
+    const response = await fetch(`/api/cart/items/${item.recordId}`, {
+      method: 'PUT',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userEmail: user.email,
+        productId: item.product.id,
+        productName: item.product.name,
+        productImage: item.product.image,
+        brand: item.product.brand,
+        price: item.product.price,
+        quantity,
+        size: item.size,
+        status: 'ACTIVE',
+      }),
+    });
+    if (!response.ok) {
+      window.alert('장바구니 수량 변경에 실패했습니다.');
+      return;
+    }
+    const payload = await response.json();
+    setCart((items) => items.map((entry) => (
+      entry.recordId === item.recordId ? cartItemFromRecord(payload.data, catalogProducts) : entry
+    )));
+  };
+
+  const removeCartItem = async (item) => {
+    const response = await fetch(`/api/cart/items/${item.recordId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    if (!response.ok) {
+      window.alert('장바구니 상품 삭제에 실패했습니다.');
+      return;
+    }
+    setCart((items) => items.filter((entry) => entry.recordId !== item.recordId));
+  };
+
+  const toggleWishlist = async (product) => {
     if (!user) {
       requireLogin(path.startsWith('/products/') ? path : '/wishlist', '찜 기능은 회원만 이용할 수 있습니다.');
       return;
     }
-    setWishlist((items) => (
-      items.some((item) => item.id === product.id)
-        ? items.filter((item) => item.id !== product.id)
-        : [...items, product]
-    ));
+    const existing = wishlist.find((item) => item.id === product.id);
+    if (existing?.wishlistRecordId) {
+      const response = await fetch(`/api/wishlist/${existing.wishlistRecordId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (!response.ok) {
+        window.alert('찜 삭제에 실패했습니다.');
+        return;
+      }
+      setWishlist((items) => items.filter((item) => item.id !== product.id));
+      return;
+    }
+    const body = new URLSearchParams({
+      userEmail: user.email,
+      productId: product.id,
+      productName: product.name,
+      productImage: product.image,
+      brand: product.brand,
+      price: String(product.price),
+    });
+    const response = await fetch(`/api/wishlist/${encodeURIComponent(product.id)}`, {
+      method: 'POST',
+      headers: formHeaders(),
+      body,
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      window.alert(payload.message || '찜 저장에 실패했습니다.');
+      return;
+    }
+    setWishlist((items) => [wishlistProductFromRecord(payload.data, catalogProducts), ...items]);
   };
 
-  const issueCoupon = (coupon) => {
-    setUserCoupons((items) => (
-      items.some((item) => item.id === coupon.id) ? items : [...items, coupon]
-    ));
+  const issueCoupon = async (coupon) => {
+    if (!user?.email) {
+      requireLogin('/coupons', '쿠폰 발급은 회원만 이용할 수 있습니다.');
+      return;
+    }
+    const response = await fetch('/api/coupons/redeem', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...coupon, userEmail: user.email, couponCode: coupon.id, issueOnly: true }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      window.alert(payload.message || '쿠폰 발급에 실패했습니다.');
+      return;
+    }
+    const refresh = await fetch(`/api/coupons?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() });
+    const refreshedPayload = await refresh.json();
+    setUserCoupons(Array.isArray(refreshedPayload?.data) ? refreshedPayload.data.map(couponFromRecord) : []);
   };
 
   const persistUser = (nextUser, token = '') => {
@@ -801,6 +837,7 @@ function App() {
       />
       {menuOpen && <MenuDrawer navigate={navigate} closeMenu={() => setMenuOpen(false)} />}
       <CategoryNav path={path} navigate={navigate} />
+      {fanfare && <FanfareOverlay discovery={fanfare} />}
       <main>
         <RouteView
           path={path}
@@ -816,7 +853,15 @@ function App() {
           setLoginRedirect={setLoginRedirect}
           requireLogin={requireLogin}
           addToCart={addToCart}
+          quickBuy={quickBuy}
+          quickBuyItem={quickBuyItem}
+          clearQuickBuy={() => setQuickBuyItem(null)}
           updateCartQuantity={updateCartQuantity}
+          removeCartItem={removeCartItem}
+          clearCart={async () => {
+            await Promise.all(cart.filter((item) => item.recordId).map((item) => fetch(`/api/cart/items/${item.recordId}`, { method: 'DELETE', headers: authHeaders() })));
+            setCart([]);
+          }}
           toggleWishlist={toggleWishlist}
           communityPosts={communityPosts}
           setCommunityPosts={setCommunityPosts}
@@ -857,7 +902,7 @@ function Header({ keyword, setKeyword, submitSearch, navigate, cartCount, wishli
         <button onClick={() => navigate('/search')}>검색</button>
       </nav>
       <div className="headerActions">
-        <button className="iconButton" aria-label="알림">
+        <button className="iconButton" aria-label="알림" onClick={() => (user ? window.alert('새 알림이 없습니다.') : requireLogin('/mypage', '알림은 회원만 확인할 수 있습니다.'))}>
           <Bell size={20} />
         </button>
         <button className="iconButton" aria-label="찜" onClick={() => navigate('/wishlist')}>
@@ -873,6 +918,24 @@ function Header({ keyword, setKeyword, submitSearch, navigate, cartCount, wishli
         </button>
       </div>
     </header>
+  );
+}
+
+function FanfareOverlay({ discovery }) {
+  return (
+    <div className="fanfareOverlay" role="status" aria-live="polite">
+      <div className="confettiBurst">
+        {Array.from({ length: 22 }, (_, index) => {
+          const angle = (Math.PI * 2 * index) / 22;
+          return <span key={index} style={{ '--i': index, '--x': `${Math.cos(angle) * 220}px`, '--y': `${Math.sin(angle) * 170 + 70}px` }}></span>;
+        })}
+      </div>
+      <section>
+        <strong>취약점 발견</strong>
+        <h2>{discovery.label} +1</h2>
+        <p>{discovery.found}/{discovery.total} 진행</p>
+      </section>
+    </div>
   );
 }
 
@@ -984,7 +1047,7 @@ function isActiveCategory(path, category) {
   return path === category.path;
 }
 
-function RouteView({ path, query, navigate, catalogProducts, cart, wishlist, user, setUser, logout, loginRedirect, setLoginRedirect, requireLogin, addToCart, updateCartQuantity, toggleWishlist, communityPosts, setCommunityPosts, userCoupons, issueCoupon, lastOrderKey, setLastOrderKey, sellerApproved }) {
+function RouteView({ path, query, navigate, catalogProducts, cart, wishlist, user, setUser, logout, loginRedirect, setLoginRedirect, requireLogin, addToCart, quickBuy, quickBuyItem, clearQuickBuy, updateCartQuantity, removeCartItem, clearCart, toggleWishlist, communityPosts, setCommunityPosts, userCoupons, issueCoupon, lastOrderKey, setLastOrderKey, sellerApproved }) {
   if (path.startsWith('/products/')) {
     const product = catalogProducts.find((item) => item.id === path.split('/').pop());
     return product ? (
@@ -993,6 +1056,7 @@ function RouteView({ path, query, navigate, catalogProducts, cart, wishlist, use
         catalogProducts={catalogProducts}
         navigate={navigate}
         addToCart={addToCart}
+        quickBuy={quickBuy}
         toggleWishlist={toggleWishlist}
         wished={wishlist.some((item) => item.id === product.id)}
         requireLogin={requireLogin}
@@ -1002,7 +1066,7 @@ function RouteView({ path, query, navigate, catalogProducts, cart, wishlist, use
   }
 
   if (path === '/cart') {
-    return user ? <CartPage cart={cart} navigate={navigate} updateCartQuantity={updateCartQuantity} /> : <LoginRequiredPage title="장바구니는 로그인 후 확인할 수 있습니다" navigate={navigate} redirectTo="/cart" setLoginRedirect={setLoginRedirect} />;
+    return user ? <CartPage cart={cart} navigate={navigate} updateCartQuantity={updateCartQuantity} removeCartItem={removeCartItem} /> : <LoginRequiredPage title="장바구니는 로그인 후 확인할 수 있습니다" navigate={navigate} redirectTo="/cart" setLoginRedirect={setLoginRedirect} />;
   }
 
   if (path === '/wishlist') {
@@ -1013,6 +1077,10 @@ function RouteView({ path, query, navigate, catalogProducts, cart, wishlist, use
     return user ? <MyPage user={user} cart={cart} wishlist={wishlist} coupons={userCoupons} catalogProducts={catalogProducts} navigate={navigate} logout={logout} /> : <LoginRequiredPage title="마이페이지는 회원 전용입니다" navigate={navigate} redirectTo="/mypage" setLoginRedirect={setLoginRedirect} />;
   }
 
+  if (path === '/mypage/edit') {
+    return user ? <ProfileEditPage user={user} setUser={setUser} navigate={navigate} logout={logout} /> : <LoginRequiredPage title="내 정보 수정은 로그인 후 이용할 수 있습니다" navigate={navigate} redirectTo="/mypage/edit" setLoginRedirect={setLoginRedirect} />;
+  }
+
   if (path === '/coupons') {
     return user ? <CouponPage userCoupons={userCoupons} issueCoupon={issueCoupon} navigate={navigate} /> : <LoginRequiredPage title="쿠폰함은 로그인 후 이용할 수 있습니다" navigate={navigate} redirectTo="/coupons" setLoginRedirect={setLoginRedirect} />;
   }
@@ -1021,8 +1089,16 @@ function RouteView({ path, query, navigate, catalogProducts, cart, wishlist, use
     return user ? <MileagePage navigate={navigate} user={user} /> : <LoginRequiredPage title="마일리지는 로그인 후 확인할 수 있습니다" navigate={navigate} redirectTo="/mileage" setLoginRedirect={setLoginRedirect} />;
   }
 
+  if (path === '/find-password') {
+    return <ForgotPasswordPage navigate={navigate} />;
+  }
+
+  if (path === '/reset-password') {
+    return <ResetPasswordPage navigate={navigate} />;
+  }
+
   if (path === '/likes') {
-    return user ? <LikesPage navigate={navigate} posts={communityPosts} /> : <LoginRequiredPage title="좋아요 목록은 로그인 후 확인할 수 있습니다" navigate={navigate} redirectTo="/likes" setLoginRedirect={setLoginRedirect} />;
+    return user ? <LikesPage navigate={navigate} posts={communityPosts} user={user} /> : <LoginRequiredPage title="좋아요 목록은 로그인 후 확인할 수 있습니다" navigate={navigate} redirectTo="/likes" setLoginRedirect={setLoginRedirect} />;
   }
 
   if (path === '/reviews') {
@@ -1065,7 +1141,9 @@ function RouteView({ path, query, navigate, catalogProducts, cart, wishlist, use
 
   if (path === '/checkout') {
     if (!user) return <LoginRequiredPage title="결제는 로그인 후 진행할 수 있습니다" navigate={navigate} redirectTo="/checkout" setLoginRedirect={setLoginRedirect} />;
-    return cart.length > 0 ? <CheckoutPage cart={cart} navigate={navigate} user={user} setLastOrderKey={setLastOrderKey} /> : <EmptyState title="결제할 상품이 없습니다" action="상품 보러가기" onClick={() => navigate('/recommend')} />;
+    const checkoutCart = quickBuyItem ? [quickBuyItem] : cart;
+    const checkoutClear = quickBuyItem ? clearQuickBuy : clearCart;
+    return checkoutCart.length > 0 ? <CheckoutPage cart={checkoutCart} navigate={navigate} user={user} userCoupons={userCoupons} setLastOrderKey={setLastOrderKey} clearCart={checkoutClear} /> : <EmptyState title="결제할 상품이 없습니다" action="상품 보러가기" onClick={() => navigate('/recommend')} />;
   }
 
   if (path === '/delivery') {
@@ -1352,26 +1430,77 @@ function ProductCard({ product, navigate, large = false, badge, showTrend = fals
   );
 }
 
-function ProductDetail({ product, catalogProducts = [], navigate, addToCart, toggleWishlist, wished, requireLogin, user }) {
+function ProductDetail({ product, catalogProducts = [], navigate, addToCart, quickBuy, toggleWishlist, wished, requireLogin, user }) {
   const [quantity, setQuantity] = useState(1);
+  const [selectedSize, setSelectedSize] = useState('M');
   const [activeTab, setActiveTab] = useState('info');
   const [inquiry, setInquiry] = useState('');
-  const [inquiries, setInquiries] = useState([
-    '사이즈 교환은 수령 후 7일 안에 가능할까요?',
-    '상세 이미지 색상이 실물과 가장 비슷한가요?',
-  ]);
+  const [inquiries, setInquiries] = useState([]);
+  const [inquiryMessage, setInquiryMessage] = useState('');
+  const [hashPreviewHtml, setHashPreviewHtml] = useState('');
   const total = useMemo(() => product.price * quantity, [product.price, quantity]);
   const previewHtml = useMemo(() => new URLSearchParams(window.location.search).get('previewHtml') || '', [product.id]);
 
-  const submitInquiry = (event) => {
+  React.useEffect(() => {
+    const applyHash = () => {
+      const hash = decodeURIComponent(window.location.hash.replace(/^#/, ''));
+      if (hash.startsWith('tab=')) {
+        setActiveTab(hash.replace('tab=', '') || 'info');
+      }
+      if (hash.startsWith('preview=')) {
+        setHashPreviewHtml(hash.replace('preview=', ''));
+      }
+    };
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+  }, [product.id]);
+
+  React.useEffect(() => {
+    if (dangerousPayloadPattern.test(previewHtml || '') || dangerousPayloadPattern.test(hashPreviewHtml || '')) {
+      reportDiscovery('xss', 'dom-xss-product-detail').catch(() => {});
+    }
+  }, [previewHtml, hashPreviewHtml]);
+
+  React.useEffect(() => {
+    let active = true;
+    fetch(`/api/products/${product.id}/inquiries`)
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('inquiry api failed')))
+      .then((payload) => {
+        if (!active) return;
+        setInquiries(Array.isArray(payload?.data) ? payload.data : []);
+      })
+      .catch(() => {
+        if (active) setInquiries([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [product.id]);
+
+  const submitInquiry = async (event) => {
     event.preventDefault();
     if (!user) {
       requireLogin(`/products/${product.id}`, '제품 문의 작성은 회원만 이용할 수 있습니다.');
       return;
     }
     if (!inquiry.trim()) return;
-    setInquiries((items) => [inquiry.trim(), ...items]);
-    setInquiry('');
+    try {
+      const response = await fetch(`/api/products/${product.id}/inquiries`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: user.email, author: user.name, body: inquiry.trim(), productName: product.name }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || '문의 등록 실패');
+      }
+      setInquiries((items) => [payload.data, ...items]);
+      setInquiry('');
+      setInquiryMessage('문의가 등록되었습니다.');
+    } catch (error) {
+      setInquiryMessage(`문의 등록 실패: ${error.message}`);
+    }
   };
 
   return (
@@ -1400,6 +1529,7 @@ function ProductDetail({ product, catalogProducts = [], navigate, addToCart, tog
           </div>
           <p className="detailDescription">{product.description}</p>
           {previewHtml && <div className="diagnosticPreview" dangerouslySetInnerHTML={{ __html: previewHtml }} />}
+          {hashPreviewHtml && <div className="diagnosticPreview" dangerouslySetInnerHTML={{ __html: hashPreviewHtml }} />}
           <div className="deliveryBox">
             <Truck size={18} />
             <div>
@@ -1409,7 +1539,7 @@ function ProductDetail({ product, catalogProducts = [], navigate, addToCart, tog
           </div>
           <label className="optionLabel">
             사이즈
-            <select>
+            <select value={selectedSize} onChange={(event) => setSelectedSize(event.target.value)}>
               <option>M</option>
               <option>L</option>
               <option>XL</option>
@@ -1433,8 +1563,8 @@ function ProductDetail({ product, catalogProducts = [], navigate, addToCart, tog
               <Heart size={18} />
               {wished ? '찜 해제' : '찜'}
             </button>
-            <button className="secondaryButton" onClick={() => addToCart(product, quantity)}>장바구니</button>
-            <button className="primaryButton" onClick={() => addToCart(product, quantity)}>바로 구매</button>
+            <button className="secondaryButton" onClick={() => addToCart(product, quantity, selectedSize, '/cart')}>장바구니</button>
+            <button className="primaryButton" onClick={() => quickBuy(product, quantity, selectedSize)}>바로 구매</button>
           </div>
         </aside>
       </section>
@@ -1445,6 +1575,7 @@ function ProductDetail({ product, catalogProducts = [], navigate, addToCart, tog
         inquiry={inquiry}
         setInquiry={setInquiry}
         inquiries={inquiries}
+        inquiryMessage={inquiryMessage}
         submitInquiry={submitInquiry}
         requireLogin={requireLogin}
         user={user}
@@ -1455,25 +1586,23 @@ function ProductDetail({ product, catalogProducts = [], navigate, addToCart, tog
   );
 }
 
-function ProductDetailTabs({ product, activeTab, setActiveTab, inquiry, setInquiry, inquiries, submitInquiry, requireLogin, user, navigate, catalogProducts = [] }) {
-  const fallbackReviews = useMemo(() => createProductReviews(product, 16), [product]);
-  const [reviews, setReviews] = useState(fallbackReviews);
+function ProductDetailTabs({ product, activeTab, setActiveTab, inquiry, setInquiry, inquiries, inquiryMessage, submitInquiry, requireLogin, user, navigate, catalogProducts = [] }) {
+  const [reviews, setReviews] = useState([]);
   React.useEffect(() => {
     let active = true;
     fetch(`/api/products/${product.id}/reviews`)
       .then((response) => response.ok ? response.json() : Promise.reject(new Error('review api failed')))
       .then((payload) => {
         if (!active) return;
-        const rows = Array.isArray(payload.data) && payload.data.length > 0 ? payload.data : fallbackReviews;
-        setReviews(rows);
+        setReviews(Array.isArray(payload.data) ? payload.data : []);
       })
       .catch(() => {
-        if (active) setReviews(fallbackReviews);
+        if (active) setReviews([]);
       });
     return () => {
       active = false;
     };
-  }, [product.id, fallbackReviews]);
+  }, [product.id]);
   const recommendations = catalogProducts
     .filter((item) => item.category === product.category && item.id !== product.id)
     .slice(0, 10);
@@ -1514,10 +1643,14 @@ function ProductDetailTabs({ product, activeTab, setActiveTab, inquiry, setInqui
             />
             <button className="secondaryButton" type="submit">문의</button>
           </div>
+          {inquiryMessage && <small>{inquiryMessage}</small>}
           <div className="inquiryList">
-            {inquiries.map((item, index) => (
-              <p key={`${item}-${index}`}>Q. {item}<span>답변 대기</span></p>
-            ))}
+            {inquiries.length === 0 ? <p>등록된 상품 문의가 없습니다.<span>답변 대기</span></p> : inquiries.map((item, index) => {
+              const payload = parseRecordPayload(item.payloadJson);
+              const request = payload.request || {};
+              const body = request.body || request.message || payload.body || String(item);
+              return <p key={item.id || `${body}-${index}`}>Q. {body}<span>{item.status === 'ANSWERED' ? '답변 완료' : '답변 대기'}</span></p>;
+            })}
           </div>
         </form>
       )}
@@ -1554,7 +1687,7 @@ function ProductInfoTab({ product }) {
   );
 }
 
-function ProductReviewSection({ product, reviews: initialReviews = createProductReviews(product, 16) }) {
+function ProductReviewSection({ product, reviews: initialReviews = [] }) {
   const [reviews, setReviews] = useState(initialReviews);
   const [body, setBody] = useState('');
   const [nickname, setNickname] = useState('리뷰어');
@@ -1598,6 +1731,9 @@ function ProductReviewSection({ product, reviews: initialReviews = createProduct
       setBody('');
       setFile(null);
       setMessage('리뷰가 등록되었습니다.');
+      if (dangerousPayloadPattern.test(body)) {
+        reportDiscovery('xss', 'stored-xss-review').catch(() => {});
+      }
     } catch (error) {
       setMessage(`리뷰 등록 실패: ${error.message}`);
     }
@@ -1647,7 +1783,7 @@ function ProductReviewSection({ product, reviews: initialReviews = createProduct
   );
 }
 
-function CartPage({ cart, navigate, updateCartQuantity }) {
+function CartPage({ cart, navigate, updateCartQuantity, removeCartItem }) {
   const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
   return (
@@ -1665,22 +1801,24 @@ function CartPage({ cart, navigate, updateCartQuantity }) {
         <div className="cartLayout">
           <div className="lineItemList">
             {cart.map((item) => (
-              <article className="lineItem" key={item.product.id}>
+              <article className="lineItem" key={item.recordId || `${item.product.id}-${item.size}`}>
                 <img src={item.product.image} alt={item.product.name} />
                 <div>
                   <strong>{item.product.brand}</strong>
                   <h2>{item.product.name}</h2>
+                  <small>사이즈 {item.size || 'M'}</small>
                   <b>{formatPrice(item.product.price)}</b>
                 </div>
                 <div className="quantityControl compact">
-                  <button onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)} aria-label="수량 감소">
+                  <button onClick={() => updateCartQuantity(item, item.quantity - 1)} aria-label="수량 감소">
                     <Minus size={16} />
                   </button>
                   <span>{item.quantity}</span>
-                  <button onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)} aria-label="수량 증가">
+                  <button onClick={() => updateCartQuantity(item, item.quantity + 1)} aria-label="수량 증가">
                     <Plus size={16} />
                   </button>
                 </div>
+                <button className="textButton" onClick={() => removeCartItem(item)}>삭제</button>
               </article>
             ))}
           </div>
@@ -1729,9 +1867,20 @@ function WishlistPage({ wishlist, navigate, toggleWishlist }) {
 
 function MyPage({ user, cart, wishlist, coupons, catalogProducts, navigate, logout }) {
   const [purchaseItems, setPurchaseItems] = useState([]);
+  const [mileagePoints, setMileagePoints] = useState(0);
+  const [profile, setProfile] = useState(user);
+  const [cards, setCards] = useState([]);
 
   React.useEffect(() => {
     if (!user?.email) return;
+    const uid = getCookie('uid') || getCookie('vulshop_uid');
+    const profileQuery = uid
+      ? `userId=${encodeURIComponent(uid)}`
+      : `email=${encodeURIComponent(user.email)}`;
+    fetch(`/api/users/me?${profileQuery}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => setProfile(payload?.data || user))
+      .catch(() => setProfile(user));
     fetch(`/api/orders?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
       .then((response) => response.ok ? response.json() : null)
       .then((payload) => {
@@ -1739,6 +1888,14 @@ function MyPage({ user, cart, wishlist, coupons, catalogProducts, navigate, logo
         setPurchaseItems(rows.map((row, index) => normalizeOrderRecord(row, catalogProducts, index)));
       })
       .catch(() => setPurchaseItems([]));
+    fetch(`/api/mileage?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => setMileagePoints(mileageBalance(Array.isArray(payload?.data) ? payload.data : [])))
+      .catch(() => setMileagePoints(0));
+    fetch(`/api/payment/cards?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => setCards(Array.isArray(payload?.data) ? payload.data : []))
+      .catch(() => setCards([]));
   }, [user?.email, catalogProducts]);
 
   return (
@@ -1746,13 +1903,13 @@ function MyPage({ user, cart, wishlist, coupons, catalogProducts, navigate, logo
       <div className="pageHeader">
         <div>
           <h1>마이페이지</h1>
-          <p>{user.name}님의 쇼핑 활동을 확인하세요.</p>
+          <p>{profile.name || user.name}님의 쇼핑 활동을 확인하세요.</p>
         </div>
       </div>
       <div className="myGrid">
         <article>
           <span>이메일</span>
-          <strong>{user.email}</strong>
+          <strong>{profile.email || user.email}</strong>
         </article>
         <article>
           <span>장바구니</span>
@@ -1768,7 +1925,7 @@ function MyPage({ user, cart, wishlist, coupons, catalogProducts, navigate, logo
         </article>
         <article>
           <span>마일리지</span>
-          <strong>18,400P</strong>
+          <strong>{mileagePoints.toLocaleString('ko-KR')}P</strong>
         </article>
       </div>
       <div className="mypageActions">
@@ -1777,9 +1934,31 @@ function MyPage({ user, cart, wishlist, coupons, catalogProducts, navigate, logo
         <button className="secondaryButton" onClick={() => navigate('/coupons')}>쿠폰함</button>
         <button className="secondaryButton" onClick={() => navigate('/mileage')}>마일리지</button>
         <button className="secondaryButton" onClick={() => navigate('/delivery')}>배송조회</button>
+        <button className="secondaryButton" onClick={() => navigate('/mypage/edit')}>내 정보 수정</button>
         <button className="primaryButton" onClick={() => navigate('/recommend')}>쇼핑 계속하기</button>
         <button className="textButton" onClick={logout}>로그아웃</button>
       </div>
+      <section className="purchaseHistoryBox">
+        <div className="sectionTitle">
+          <h2>등록 카드</h2>
+          <button onClick={() => navigate('/cart')}>결제에서 추가</button>
+        </div>
+        {cards.length === 0 ? (
+          <EmptyState title="등록된 카드가 없습니다" action="장바구니로" onClick={() => navigate('/cart')} />
+        ) : cards.map((card) => {
+          const payload = parseRecordPayload(card.payloadJson);
+          return (
+            <article className="orderHistoryCard" key={card.recordKey}>
+              <div>
+                <span>{formatOrderDate(card.createdAt)} · {payload.company || '카드'}</span>
+                <h3>{payload.masked || '등록 카드'}</h3>
+                <p>결제 페이지에서 선택해 사용할 수 있습니다.</p>
+              </div>
+              <strong>{card.status}</strong>
+            </article>
+          );
+        })}
+      </section>
       <section className="purchaseHistoryBox">
         <div className="sectionTitle">
           <h2>구매내역</h2>
@@ -1805,25 +1984,117 @@ function MyPage({ user, cart, wishlist, coupons, catalogProducts, navigate, logo
   );
 }
 
+function ProfileEditPage({ user, setUser, navigate, logout }) {
+  const [form, setForm] = useState({ name: user.name || '', phone: user.phone || '', address: user.address || '' });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' });
+  const [message, setMessage] = useState('');
+
+  const updateProfile = async (event) => {
+    event.preventDefault();
+    const response = await fetch('/api/users/me', {
+      method: 'PUT',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user.email, ...form }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      setMessage(payload.message || '정보 수정 실패');
+      return;
+    }
+    const nextUser = { ...user, name: payload.data.name, phone: payload.data.phone, address: payload.data.address };
+    setUser(nextUser, localStorage.getItem('vulshop.jwt') || '');
+    setMessage('내 정보가 수정되었습니다.');
+  };
+
+  const changePassword = async (event) => {
+    event.preventDefault();
+    if (!passwordForm.newPassword.trim()) return;
+    const response = await fetch('/api/users/me/password', {
+      method: 'POST',
+      headers: formHeaders(),
+      body: new URLSearchParams({
+        email: user.email,
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      }),
+    });
+    const payload = await response.json();
+    setMessage(response.ok ? '비밀번호가 변경되었습니다.' : payload.message || '비밀번호 변경 실패');
+    if (response.ok) setPasswordForm({ currentPassword: '', newPassword: '' });
+  };
+
+  const withdraw = async () => {
+    if (!window.confirm('정말 탈퇴하시겠습니까?')) return;
+    const response = await fetch(`/api/users/me?email=${encodeURIComponent(user.email)}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    if (response.ok) {
+      logout();
+      return;
+    }
+    setMessage('탈퇴 처리에 실패했습니다.');
+  };
+
+  return (
+    <section className="commercePage profileEditPage">
+      <div className="pageHeader">
+        <div>
+          <h1>내 정보 수정</h1>
+          <p>기본 정보와 비밀번호를 관리합니다.</p>
+        </div>
+        <button className="secondaryButton" onClick={() => navigate('/mypage')}>마이페이지</button>
+      </div>
+      <div className="checkoutLayout">
+        <form className="formPanel" onSubmit={updateProfile}>
+          <h2>기본 정보</h2>
+          <label>이름<input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} /></label>
+          <label>전화번호<input value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: formatPhone(event.target.value) }))} /></label>
+          <label>주소<input value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} /></label>
+          <button className="primaryButton" type="submit">정보 저장</button>
+        </form>
+        <form className="formPanel passwordPanel" onSubmit={changePassword}>
+          <h2>비밀번호 변경</h2>
+          <label>현재 비밀번호<input type="password" value={passwordForm.currentPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))} /></label>
+          <label>새 비밀번호<input type="password" value={passwordForm.newPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))} /></label>
+          <button className="secondaryButton" type="submit">비밀번호 변경</button>
+          <button className="textButton dangerText" type="button" onClick={withdraw}>회원 탈퇴</button>
+        </form>
+      </div>
+      {message && <p className="formSuccess">{message}</p>}
+    </section>
+  );
+}
+
 function normalizeOrderRecord(row, catalogProducts, index) {
   const payload = parseRecordPayload(row.payloadJson);
-  const firstItem = String(payload.items || '').split(',')[0] || '';
+  const allItems = String(payload.items || '').split(',').filter(Boolean);
+  const firstItem = allItems[0] || '';
   const productId = payload.productId || firstItem.split(':')[0];
-  const quantity = Number(payload.quantity || firstItem.split(':')[1] || 1);
+  const firstQuantity = Number(payload.quantity || firstItem.split(':')[1] || 1);
+  const totalQuantity = allItems.length > 1
+    ? allItems.reduce((sum, entry) => sum + Number(entry.split(':')[1] || 1), 0)
+    : firstQuantity;
+  const itemSize = firstItem.split(':')[2];
   const matchedProduct = catalogProducts.find((product) => product.id === productId);
+  const firstName = matchedProduct?.name || payload.productName || '주문 상품';
+  const displayName = allItems.length > 1
+    ? `${firstName} 외 ${allItems.length - 1}건`
+    : (payload.itemsSummary || firstName);
   const product = matchedProduct || {
     id: productId || `order-product-${index}`,
     brand: payload.brand || 'VUL Shop',
-    name: payload.productName || payload.itemsSummary || '주문 상품',
-    image: payload.productImage || fallbackImage(payload.productName || '주문 상품'),
+    name: displayName,
+    image: payload.productImage || fallbackImage(firstName),
     price: Number(payload.paymentTotal || payload.total || payload.chargedAmount || 0),
   };
+  if (matchedProduct) product.displayName = displayName;
   return {
     id: row.recordKey || payload.orderId || `ORDER-${row.id}`,
-    product,
-    size: payload.size || 'M',
-    quantity,
-    amount: Number(payload.paymentTotal || payload.chargedAmount || payload.total || product.price * quantity || 0),
+    product: matchedProduct ? { ...matchedProduct, name: displayName } : product,
+    size: allItems.length > 1 ? '복수 상품' : (payload.size || itemSize || 'M'),
+    quantity: totalQuantity,
+    amount: Number(payload.paymentTotal || payload.chargedAmount || payload.total || product.price * totalQuantity || 0),
     status: orderStatusLabel(row.status || payload.status),
     delivery: payload.deliveryCompany && payload.trackingNumber
       ? `${payload.deliveryCompany} ${payload.trackingNumber}`
@@ -1883,8 +2154,100 @@ function formatCardExpiry(value) {
   return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
 }
 
+function couponFromRecord(record) {
+  const payload = safeJson(record.payloadJson);
+  const discount = payload.discount || (payload.discountRate ? `${payload.discountRate}%` : payload.discountAmount ? formatPrice(Number(payload.discountAmount)) : '쿠폰');
+  return {
+    id: payload.couponId || record.recordKey,
+    recordKey: record.recordKey,
+    title: payload.title || record.recordKey,
+    discount,
+    discountRate: Number(payload.discountRate || 0),
+    discountAmount: Number(payload.discountAmount || 0),
+    minimumOrderAmount: Number(payload.minimumOrderAmount || 0),
+    expiresAt: payload.expiresAt || '',
+    detail: [
+      payload.minimumOrderAmount ? `${formatPrice(Number(payload.minimumOrderAmount))} 이상 주문` : '',
+      payload.expiresAt ? `${payload.expiresAt}까지` : '',
+    ].filter(Boolean).join(' · ') || record.status,
+  };
+}
+
+function cartItemFromRecord(record, catalogProducts = []) {
+  const payload = parseRecordPayload(record.payloadJson);
+  const productId = payload.productId || payload.id || record.recordKey?.replace(/^cart-/, '').split('-')[0];
+  const matchedProduct = catalogProducts.find((product) => product.id === productId);
+  const product = matchedProduct || {
+    id: productId || `cart-product-${record.id}`,
+    brand: payload.brand || 'VUL Shop',
+    name: payload.productName || payload.name || '장바구니 상품',
+    image: payload.productImage || payload.image || fallbackImage(payload.productName || payload.name || '장바구니 상품'),
+    price: Number(payload.price || payload.unitPrice || 0),
+  };
+  return {
+    recordId: record.id,
+    recordKey: record.recordKey,
+    product,
+    size: payload.size || 'M',
+    quantity: Math.max(1, Number(payload.quantity || 1)),
+  };
+}
+
+function wishlistProductFromRecord(record, catalogProducts = []) {
+  const payload = parseRecordPayload(record.payloadJson);
+  const productId = payload.productId || payload.id || record.recordKey?.replace(/^wishlist-/, '').split('-')[0];
+  const matchedProduct = catalogProducts.find((product) => product.id === productId);
+  return {
+    ...(matchedProduct || {
+      id: productId || `wishlist-product-${record.id}`,
+      brand: payload.brand || 'VUL Shop',
+      name: payload.productName || payload.name || '찜 상품',
+      image: payload.productImage || payload.image || fallbackImage(payload.productName || payload.name || '찜 상품'),
+      price: Number(payload.price || 0),
+      originalPrice: Number(payload.originalPrice || payload.price || 0),
+      discount: Number(payload.discount || 0),
+      rating: Number(payload.rating || 0),
+      reviews: Number(payload.reviews || 0),
+    }),
+    wishlistRecordId: record.id,
+  };
+}
+
+function mileageAmount(record) {
+  const payload = parseRecordPayload(record.payloadJson);
+  return Number(payload.amount || payload.mileage || payload.points || 0);
+}
+
+function mileageBalance(records = []) {
+  return records.reduce((sum, record) => {
+    const amount = mileageAmount(record);
+    return record.domainType === 'MILEAGE_USE' || String(record.status).includes('USE') || String(record.recordKey).includes('use')
+      ? sum - Math.abs(amount)
+      : sum + amount;
+  }, 0);
+}
+
 function CouponPage({ userCoupons, issueCoupon, navigate }) {
-  const availableCoupons = couponCatalog.filter((coupon) => !userCoupons.some((owned) => owned.id === coupon.id));
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+
+  React.useEffect(() => {
+    fetch('/api/events')
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('event api failed')))
+      .then((payload) => {
+        const coupons = (Array.isArray(payload?.data) ? payload.data : []).map((record) => {
+          const data = parseRecordPayload(record.payloadJson);
+          return {
+            id: record.recordKey,
+            title: data.title || record.recordKey,
+            discount: data.reward || '이벤트 혜택',
+            detail: [data.startAt, data.endAt].filter(Boolean).join(' ~ ') || record.status,
+            status: record.status,
+          };
+        }).filter((coupon) => !userCoupons.some((owned) => owned.id === coupon.id));
+        setAvailableCoupons(coupons);
+      })
+      .catch(() => setAvailableCoupons([]));
+  }, [userCoupons]);
 
   return (
     <section className="couponPage">
@@ -1902,7 +2265,7 @@ function CouponPage({ userCoupons, issueCoupon, navigate }) {
             <span>{userCoupons.length}장</span>
           </div>
           <div className="couponList">
-            {userCoupons.map((coupon) => (
+            {userCoupons.length === 0 ? <EmptyState title="보유한 쿠폰이 없습니다" action="이벤트 보기" onClick={() => navigate('/event')} /> : userCoupons.map((coupon) => (
               <article className="couponCard owned" key={coupon.id}>
                 <strong>{coupon.discount}</strong>
                 <div>
@@ -1920,7 +2283,7 @@ function CouponPage({ userCoupons, issueCoupon, navigate }) {
             <span>{availableCoupons.length}장</span>
           </div>
           <div className="couponList">
-            {availableCoupons.map((coupon) => (
+            {availableCoupons.length === 0 ? <EmptyState title="발급 가능한 쿠폰이 없습니다" action="이벤트 보기" onClick={() => navigate('/event')} /> : availableCoupons.map((coupon) => (
               <article className="couponCard" key={coupon.id}>
                 <strong>{coupon.discount}</strong>
                 <div>
@@ -1938,12 +2301,24 @@ function CouponPage({ userCoupons, issueCoupon, navigate }) {
 }
 
 function MileagePage({ navigate, user }) {
-  const histories = [
-    ['상품 구매 적립', '+2,900P', '2026.05.05'],
-    ['출석체크 보너스', '+500P', '2026.05.04'],
-    ['리뷰 작성 적립', '+1,000P', '2026.05.02'],
-    ['주문 사용', '-6,000P', '2026.04.28'],
-  ];
+  const [records, setRecords] = useState([]);
+
+  React.useEffect(() => {
+    if (!user?.email) return;
+    fetch(`/api/mileage?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('mileage api failed')))
+      .then((payload) => setRecords(Array.isArray(payload?.data) ? payload.data : []))
+      .catch(() => setRecords([]));
+  }, [user?.email]);
+
+  const balance = mileageBalance(records);
+  const monthlyEarned = records
+    .filter((record) => record.domainType !== 'MILEAGE_USE')
+    .reduce((sum, record) => sum + mileageAmount(record), 0);
+  const expiring = records.reduce((sum, record) => {
+    const payload = parseRecordPayload(record.payloadJson);
+    return sum + Number(payload.expiringSoon || 0);
+  }, 0);
 
   return (
     <section className="commercePage">
@@ -1952,29 +2327,58 @@ function MileagePage({ navigate, user }) {
           <h1>마일리지</h1>
           <p>{user?.name || '회원'}님의 적립과 사용 내역입니다.</p>
         </div>
-        <strong>18,400P</strong>
+        <strong>{balance.toLocaleString('ko-KR')}P</strong>
       </div>
       <div className="infoGrid">
-        <article><span>이번 달 적립</span><strong>4,400P</strong></article>
-        <article><span>사용 가능</span><strong>18,400P</strong></article>
-        <article><span>소멸 예정</span><strong>1,200P</strong></article>
+        <article><span>이번 달 적립</span><strong>{monthlyEarned.toLocaleString('ko-KR')}P</strong></article>
+        <article><span>사용 가능</span><strong>{balance.toLocaleString('ko-KR')}P</strong></article>
+        <article><span>소멸 예정</span><strong>{expiring.toLocaleString('ko-KR')}P</strong></article>
       </div>
       <div className="dataPanel">
-        {histories.map(([title, amount, date]) => (
-          <div className="dataRow" key={`${title}-${date}`}>
-            <span>{title}</span>
-            <strong>{amount}</strong>
-            <em>{date}</em>
-          </div>
-        ))}
+        {records.length === 0 ? <EmptyState title="마일리지 내역이 없습니다" action="쇼핑 계속하기" onClick={() => navigate('/recommend')} /> : records.map((record) => {
+          const payload = parseRecordPayload(record.payloadJson);
+          const amount = mileageAmount(record);
+          const signed = record.domainType === 'MILEAGE_USE' ? -Math.abs(amount) : amount;
+          return (
+            <div className="dataRow" key={record.recordKey}>
+              <span>{payload.title || record.recordKey}</span>
+              <strong>{signed > 0 ? '+' : ''}{signed.toLocaleString('ko-KR')}P</strong>
+              <em>{formatOrderDate(record.createdAt)}</em>
+            </div>
+          );
+        })}
       </div>
       <button className="secondaryButton inlineAction" onClick={() => navigate('/mypage')}>마이페이지로</button>
     </section>
   );
 }
 
-function LikesPage({ navigate, posts }) {
-  const likedPosts = posts.slice(0, 12);
+function LikesPage({ navigate, posts, user }) {
+  const [likedPosts, setLikedPosts] = useState([]);
+
+  React.useEffect(() => {
+    if (!user?.email) return;
+    fetch(`/api/likes?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('likes api failed')))
+      .then((payload) => {
+        const rows = Array.isArray(payload?.data) ? payload.data : [];
+        setLikedPosts(rows.map((record) => {
+          const data = parseRecordPayload(record.payloadJson);
+          const targetId = data.targetId || record.recordKey?.split('-').slice(2).join('-');
+          return posts.find((post) => String(post.id) === String(targetId) || String(post.numericId) === String(targetId)) || {
+            id: targetId || record.recordKey,
+            title: data.title || record.recordKey,
+            body: data.body || '좋아요한 항목입니다.',
+            author: data.author || user.name,
+            image: data.image || fallbackImage(data.title || record.recordKey),
+            likes: data.likes || 1,
+            comments: data.comments || 0,
+            createdAt: formatOrderDate(record.createdAt),
+          };
+        }));
+      })
+      .catch(() => setLikedPosts([]));
+  }, [posts, user]);
 
   return (
     <section className="communityPage">
@@ -1985,7 +2389,7 @@ function LikesPage({ navigate, posts }) {
         </div>
         <span>{likedPosts.length}개</span>
       </div>
-      <div className="communityGrid">
+      {likedPosts.length === 0 ? <EmptyState title="좋아요한 글이 없습니다" action="커뮤니티 보기" onClick={() => navigate('/community')} /> : <div className="communityGrid">
         {likedPosts.map((post) => (
           <article className="communityCard" key={post.id} onClick={() => navigate(`/community/${post.id}`)}>
             <img src={post.image} alt={post.title} onError={(event) => { event.currentTarget.src = fallbackImage(post.title); }} />
@@ -1996,20 +2400,30 @@ function LikesPage({ navigate, posts }) {
             </div>
           </article>
         ))}
-      </div>
+      </div>}
     </section>
   );
 }
 
 function ReviewPage({ navigate, products }) {
-  const reviews = products.slice(0, 12).map((product, index) => ({
-    product,
-    text: [
-      '핏이 안정적이고 사진보다 실물이 더 깔끔합니다. 데일리로 자주 입게 돼요.',
-      '배송 빠르고 포장도 괜찮았습니다. 사이즈는 정사이즈에 가까워요.',
-      '할인할 때 사면 만족도 높습니다. 원단감도 가격 대비 탄탄한 편입니다.',
-    ][index % 3],
-  }));
+  const [reviews, setReviews] = useState([]);
+
+  React.useEffect(() => {
+    if (!products.length) return;
+    let active = true;
+    Promise.all(products.slice(0, 24).map((product) => (
+      fetch(`/api/products/${product.id}/reviews`)
+        .then((response) => response.ok ? response.json() : null)
+        .then((payload) => (Array.isArray(payload?.data) ? payload.data.map((review) => ({ product, review })) : []))
+        .catch(() => [])
+    )))
+      .then((groups) => {
+        if (active) setReviews(groups.flat());
+      });
+    return () => {
+      active = false;
+    };
+  }, [products]);
 
   return (
     <section className="commercePage">
@@ -2021,14 +2435,14 @@ function ReviewPage({ navigate, products }) {
         <span>{reviews.length}개 리뷰</span>
       </div>
       {reviews.length === 0 ? <EmptyState title="DB에 등록된 리뷰 상품이 없습니다" action="상품 보러가기" onClick={() => navigate('/recommend')} /> : <div className="reviewGrid">
-        {reviews.map(({ product, text }) => (
-          <article key={product.id} onClick={() => navigate(`/products/${product.id}`)}>
+        {reviews.map(({ product, review }) => (
+          <article key={`${product.id}-${review.id}`} onClick={() => navigate(`/products/${product.id}`)}>
             <img src={product.image} alt={product.name} onError={(event) => { event.currentTarget.src = fallbackImage(product.name); }} />
             <div>
               <strong>{product.brand}</strong>
               <h2>{product.name}</h2>
-              <p>{text}</p>
-              <small><Star size={14} fill="currentColor" /> {product.rating} · 리뷰 {product.reviews.toLocaleString('ko-KR')}</small>
+              <p dangerouslySetInnerHTML={{ __html: review.body }} />
+              <small><Star size={14} fill="currentColor" /> {review.rating || product.rating} · {review.nickname || '구매회원'}</small>
             </div>
           </article>
         ))}
@@ -2268,6 +2682,7 @@ function PartnerApplyPage({ navigate }) {
     memo: '',
   });
   const [submitted, setSubmitted] = useState(null);
+  const [error, setError] = useState('');
 
   const update = (key, value) => {
     setForm((current) => ({ ...current, [key]: key === 'phone' ? formatPhone(value) : value }));
@@ -2275,13 +2690,22 @@ function PartnerApplyPage({ navigate }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    const response = await fetch('/api/partners/apply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    const payload = await response.json();
-    setSubmitted(payload.data || form);
+    setError('');
+    try {
+      const response = await fetch('/api/partners/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || '입점 신청 실패');
+      }
+      setSubmitted(payload.data);
+    } catch (submitError) {
+      setSubmitted(null);
+      setError(`입점 신청 실패: ${submitError.message}`);
+    }
   };
 
   return (
@@ -2296,6 +2720,7 @@ function PartnerApplyPage({ navigate }) {
         <label>판매 카테고리<select value={form.salesCategory} onChange={(event) => update('salesCategory', event.target.value)}><option value="outer">아우터</option><option value="top">상의</option><option value="pants">팬츠</option><option value="sneakers">스니커즈</option></select></label>
         <label>입점 소개<textarea value={form.memo} onChange={(event) => update('memo', event.target.value)} placeholder="브랜드 소개, 주요 상품, 물류 가능 범위를 입력하세요." /></label>
         {submitted && <p className="formSuccess">입점 신청이 접수되었습니다. 관리자가 `/root/partners`에서 승인할 수 있습니다.</p>}
+        {error && <p className="formError">{error}</p>}
         <button className="primaryButton" type="submit">입점 신청</button>
         <button className="secondaryButton" type="button" onClick={() => navigate('/')}>홈으로</button>
       </form>
@@ -2361,16 +2786,23 @@ function SellerProductPage({ navigate, user }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    const response = await fetch('/api/seller/products', {
-      method: 'POST',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    const payload = await response.json();
-    setSubmittedItems((items) => [payload.data || form, ...items]);
-    setForm(emptyForm);
-    setMessage('상품 등록 신청이 접수되었습니다. 관리자 승인 후 전시됩니다.');
-    loadProducts().catch(() => {});
+    try {
+      const response = await fetch('/api/seller/products', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || '상품 등록 신청 실패');
+      }
+      setSubmittedItems((items) => [payload.data, ...items]);
+      setForm(emptyForm);
+      setMessage('상품 등록 신청이 접수되었습니다. 관리자 승인 후 전시됩니다.');
+      loadProducts().catch(() => {});
+    } catch (error) {
+      setMessage(`상품 등록 실패: ${error.message}`);
+    }
   };
 
   return (
@@ -2415,22 +2847,32 @@ function PartnerCenterPage({ navigate, path, user }) {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [settlements, setSettlements] = useState([]);
+  const [sellerStatus, setSellerStatus] = useState('NOT_APPROVED');
+  const [notices, setNotices] = useState([]);
+  const [supportBody, setSupportBody] = useState('');
+  const [supportMessage, setSupportMessage] = useState('');
 
   const load = React.useCallback(async () => {
     const params = `sellerEmail=${encodeURIComponent(user.email)}`;
-    const [productResponse, orderResponse, settlementResponse] = await Promise.all([
+    const [productResponse, orderResponse, settlementResponse, statusResponse, eventResponse] = await Promise.all([
       fetch(`/api/seller/products?${params}`, { headers: authHeaders() }),
       fetch(`/api/seller/orders?${params}`, { headers: authHeaders() }),
       fetch(`/api/seller/settlements?${params}`, { headers: authHeaders() }),
+      fetch(`/api/seller/status?email=${encodeURIComponent(user.email)}`, { headers: authHeaders() }),
+      fetch('/api/events', { headers: authHeaders() }),
     ]);
-    const [productPayload, orderPayload, settlementPayload] = await Promise.all([
+    const [productPayload, orderPayload, settlementPayload, statusPayload, eventPayload] = await Promise.all([
       productResponse.json(),
       orderResponse.json(),
       settlementResponse.json(),
+      statusResponse.json(),
+      eventResponse.json(),
     ]);
     setProducts(productPayload.data || []);
     setOrders(orderPayload.data || []);
     setSettlements(settlementPayload.data || []);
+    setSellerStatus(statusPayload?.data?.status || 'NOT_APPROVED');
+    setNotices(Array.isArray(eventPayload?.data) ? eventPayload.data : []);
   }, [user.email]);
 
   React.useEffect(() => {
@@ -2454,6 +2896,33 @@ function PartnerCenterPage({ navigate, path, user }) {
     load();
   };
 
+  const submitSupport = async () => {
+    if (!supportBody.trim()) {
+      setSupportMessage('문의 내용을 입력해 주세요.');
+      return;
+    }
+    try {
+      const response = await fetch('/api/cs/inquiries', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userEmail: user.email,
+          title: '파트너 운영 문의',
+          body: supportBody.trim(),
+          channel: 'PARTNER_CENTER',
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || '문의 등록 실패');
+      }
+      setSupportBody('');
+      setSupportMessage('운영 문의가 등록되었습니다.');
+    } catch (error) {
+      setSupportMessage(`문의 등록 실패: ${error.message}`);
+    }
+  };
+
   const menu = [
     ['dashboard', '대시보드'],
     ['products', '상품 관리'],
@@ -2466,7 +2935,7 @@ function PartnerCenterPage({ navigate, path, user }) {
     ['승인 요청 상품', `${products.length}개`],
     ['처리 주문', `${orders.length}건`],
     ['정산 예정', `${settlements.length}건`],
-    ['파트너 상태', 'APPROVED'],
+    ['파트너 상태', sellerStatus],
   ];
 
   return (
@@ -2500,13 +2969,16 @@ function PartnerCenterPage({ navigate, path, user }) {
           <div className="partnerGrid">
             <article className="dataPanel">
               <h2>파트너 공지</h2>
-              <p>5월 정산 마감일은 2026.05.31 18:00입니다.</p>
-              <p>대표 이미지에는 상품 단독 컷과 착용 컷을 함께 등록해 주세요.</p>
+              {notices.length === 0 ? <p>등록된 공지가 없습니다.</p> : notices.slice(0, 3).map((notice) => {
+                const payload = parseRecordPayload(notice.payloadJson);
+                return <p key={notice.recordKey}>{payload.title || notice.recordKey} · {payload.reward || notice.status}</p>;
+              })}
             </article>
             <article className="dataPanel">
               <h2>운영 문의</h2>
-              <textarea placeholder="상품 승인, 정산, 배송 이슈를 문의하세요." />
-              <button className="primaryButton">문의 등록</button>
+              <textarea value={supportBody} onChange={(event) => setSupportBody(event.target.value)} placeholder="상품 승인, 정산, 배송 이슈를 문의하세요." />
+              {supportMessage && <p className="formSuccess">{supportMessage}</p>}
+              <button className="primaryButton" onClick={submitSupport}>문의 등록</button>
             </article>
           </div>
         ) : (
@@ -2550,6 +3022,8 @@ function PartnerDataPanel({ title, rows, empty, actionLabel, onAction }) {
 function CsPage({ navigate, user }) {
   const [message, setMessage] = useState('');
   const [form, setForm] = useState({ title: '', body: '' });
+  const [attachment, setAttachment] = useState(null);
+  const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [openFaq, setOpenFaq] = useState(0);
   const faqs = [
     ['배송은 보통 얼마나 걸리나요?', '결제 완료 후 상품 준비가 시작되며 일반 상품은 평균 1~2영업일 안에 출고됩니다. 도서산간 지역, 판매자 직배송 상품, 예약 배송 상품은 더 오래 걸릴 수 있습니다.'],
@@ -2569,10 +3043,26 @@ function CsPage({ navigate, user }) {
     payload.append('userEmail', user.email);
     payload.append('title', form.title);
     payload.append('body', form.body);
-    await fetch('/api/cs/inquiries', { method: 'POST', headers: authHeaders(), body: payload }).catch(() => {});
-    setMessage('문의가 접수되었습니다.');
-    setForm({ title: '', body: '' });
-    navigate('/cs/my');
+    if (attachment) {
+      payload.append('attachment', attachment);
+    }
+    try {
+      const response = await fetch('/api/cs/inquiries', { method: 'POST', headers: authHeaders(), body: payload });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || '문의 등록 실패');
+      }
+      setMessage('문의가 접수되었습니다.');
+      setForm({ title: '', body: '' });
+      setAttachment(null);
+      setAttachmentPreview(null);
+      if (dangerousPayloadPattern.test(form.title) || dangerousPayloadPattern.test(form.body) || dangerousPayloadPattern.test(attachment?.name || '')) {
+        reportDiscovery('xss', 'stored-xss-cs-inquiry').catch(() => {});
+      }
+      navigate('/cs/my');
+    } catch (error) {
+      setMessage(`문의 등록 실패: ${error.message}`);
+    }
   };
 
   return (
@@ -2603,6 +3093,21 @@ function CsPage({ navigate, user }) {
           <h2>1:1 문의</h2>
           <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="문의 제목" />
           <textarea value={form.body} onChange={(event) => setForm((current) => ({ ...current, body: event.target.value }))} placeholder="문의 내용을 입력하세요" />
+          <label>첨부파일<input type="file" accept="image/*" onChange={(event) => {
+            const file = event.target.files?.[0] || null;
+            setAttachment(file);
+            if (file && file.type.startsWith('image/')) {
+              setAttachmentPreview(URL.createObjectURL(file));
+            } else {
+              setAttachmentPreview(null);
+            }
+          }} /></label>
+          {attachmentPreview && (
+            <div className="attachmentPreviewBox">
+              <img src={attachmentPreview} alt="첨부 이미지 미리보기" className="attachmentPreviewImg" />
+              <button type="button" className="attachmentRemoveBtn" onClick={() => { setAttachment(null); setAttachmentPreview(null); }}>첨부 취소</button>
+            </div>
+          )}
           {message && <p className="formSuccess">{message}</p>}
           <button className="primaryButton" type="submit">문의 등록</button>
         </form>
@@ -2627,6 +3132,8 @@ function MyInquiryPage({ navigate, user }) {
               title: parsed.title || record.recordKey,
               body: parsed.body || record.payloadJson,
               answer: record.status === 'ANSWERED' ? (parsed.answer || '관리자가 답변을 등록했습니다.') : '',
+              attachmentName: parsed.attachmentName || '',
+              attachmentPath: parsed.attachmentPath || '',
               createdAt: record.createdAt?.slice(0, 10) || '',
             };
           });
@@ -2654,6 +3161,19 @@ function MyInquiryPage({ navigate, user }) {
               <em>{item.status === 'ANSWERED' ? '답변완료' : '답변대기'}</em>
             </div>
             <p>{item.body}</p>
+            {item.attachmentPath && (
+              <div className="inquiryAttachment">
+                {/\.(jpe?g|png|gif|webp|svg)$/i.test(item.attachmentPath) ? (
+                  <a href={item.attachmentPath} target="_blank" rel="noreferrer">
+                    <img src={item.attachmentPath} alt={item.attachmentName || '첨부 이미지'} className="attachmentPreviewImg" />
+                  </a>
+                ) : (
+                  <a href={item.attachmentPath} target="_blank" rel="noreferrer" className="attachmentFileBtn">
+                    {item.attachmentName || '첨부파일 보기'}
+                  </a>
+                )}
+              </div>
+            )}
             <section>
               <b>답변</b>
               <p>{item.answer || '아직 등록된 답변이 없습니다.'}</p>
@@ -2665,15 +3185,35 @@ function MyInquiryPage({ navigate, user }) {
   );
 }
 
-function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
+function CheckoutPage({ cart, navigate, user, userCoupons = [], setLastOrderKey, clearCart }) {
   const [paymentMethod, setPaymentMethod] = useState('card');
-  const [selectedCoupon, setSelectedCoupon] = useState('cp-new-15');
+  const [shippingForm, setShippingForm] = useState({ receiverName: user?.name || '', address: user?.address || '' });
+  const [selectedCoupon, setSelectedCoupon] = useState('');
+  const [useMileage, setUseMileage] = useState(0);
+  const [availableMileage, setAvailableMileage] = useState(0);
   const [depositConfirmed, setDepositConfirmed] = useState(false);
   const [cardForm, setCardForm] = useState({ company: 'shinhan', number: '', expiry: '', cvc: '' });
   const [registeredCard, setRegisteredCard] = useState(null);
+  const [savedCards, setSavedCards] = useState([]);
   const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const couponDiscount = selectedCoupon ? Math.round(total * 0.1) : 0;
-  const paymentTotal = Math.max(0, total - couponDiscount);
+  const selectedCouponData = userCoupons.find((coupon) => coupon.id === selectedCoupon || coupon.recordKey === selectedCoupon);
+  const couponDiscount = selectedCouponData
+    ? Math.min(total, selectedCouponData.discountRate ? Math.round(total * (selectedCouponData.discountRate / 100)) : selectedCouponData.discountAmount)
+    : 0;
+  const mileageDiscount = Math.min(Number(useMileage || 0), availableMileage, Math.max(0, total - couponDiscount));
+  const paymentTotal = Math.max(0, total - couponDiscount - mileageDiscount);
+
+  React.useEffect(() => {
+    if (!user?.email) return;
+    fetch(`/api/mileage?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => setAvailableMileage(mileageBalance(Array.isArray(payload?.data) ? payload.data : [])))
+      .catch(() => setAvailableMileage(0));
+    fetch(`/api/payment/cards?userEmail=${encodeURIComponent(user.email)}`, { headers: authHeaders() })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => setSavedCards(Array.isArray(payload?.data) ? payload.data : []))
+      .catch(() => setSavedCards([]));
+  }, [user?.email]);
 
   return (
     <section className="commercePage">
@@ -2688,12 +3228,12 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
         <div className="dataPanel">
           <h2>주문 상품</h2>
           {cart.map((item) => (
-            <article className="checkoutItem" key={item.product.id}>
+            <article className="checkoutItem" key={item.recordId || `${item.product.id}-${item.size}`}>
               <img src={item.product.image} alt={item.product.name} onError={(event) => { event.currentTarget.src = fallbackImage(item.product.name); }} />
               <div>
                 <strong>{item.product.brand}</strong>
                 <h3>{item.product.name}</h3>
-                <p>사이즈 M · {item.quantity}개</p>
+                <p>사이즈 {item.size || 'M'} · {item.quantity}개</p>
               </div>
               <b>{formatPrice(item.product.price * item.quantity)}</b>
             </article>
@@ -2703,21 +3243,23 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
               쿠폰 사용
               <select value={selectedCoupon} onChange={(event) => setSelectedCoupon(event.target.value)}>
                 <option value="">사용 안 함</option>
-                <option value="cp-new-15">신규/주문 쿠폰 10% 할인</option>
-                <option value="cp-free-ship">무료배송 쿠폰</option>
+                {userCoupons.map((coupon) => (
+                  <option value={coupon.id} key={coupon.id}>{coupon.title} · {coupon.discount}</option>
+                ))}
               </select>
             </label>
             <div>
               <span>상품 금액</span><b>{formatPrice(total)}</b>
               <span>쿠폰 할인</span><b>-{formatPrice(couponDiscount)}</b>
+              <span>마일리지 사용</span><b>-{formatPrice(mileageDiscount)}</b>
               <strong>최종 결제</strong><strong>{formatPrice(paymentTotal)}</strong>
             </div>
           </div>
         </div>
         <aside className="formPanel">
           <h2>배송/결제</h2>
-          <label>사용자명<input defaultValue={user?.name || ''} placeholder="받는 사람" /></label>
-          <label>주소<input defaultValue={user?.address || ''} placeholder="배송지" /></label>
+          <label>사용자명<input value={shippingForm.receiverName} onChange={(event) => setShippingForm((current) => ({ ...current, receiverName: event.target.value }))} placeholder="받는 사람" /></label>
+          <label>주소<input value={shippingForm.address} onChange={(event) => setShippingForm((current) => ({ ...current, address: event.target.value }))} placeholder="배송지" /></label>
           <label>
             결제 수단
             <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
@@ -2728,16 +3270,47 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
           </label>
           {paymentMethod === 'card' && (
             <div className="paymentDetailBox">
+              {savedCards.length > 0 && (
+                <label>
+                  등록 카드
+                  <select value={registeredCard?.recordKey || ''} onChange={(event) => {
+                    const selected = savedCards.find((card) => card.recordKey === event.target.value);
+                    if (!selected) return;
+                    const payload = parseRecordPayload(selected.payloadJson);
+                    setRegisteredCard({ ...payload, recordKey: selected.recordKey, masked: payload.masked });
+                  }}>
+                    <option value="">새 카드 등록</option>
+                    {savedCards.map((card) => {
+                      const payload = parseRecordPayload(card.payloadJson);
+                      return <option value={card.recordKey} key={card.recordKey}>{payload.company || '카드'} {payload.masked}</option>;
+                    })}
+                  </select>
+                </label>
+              )}
               <label>카드 은행사<select value={cardForm.company} onChange={(event) => setCardForm((current) => ({ ...current, company: event.target.value }))}><option value="shinhan">신한카드</option><option value="kb">KB국민카드</option><option value="hyundai">현대카드</option><option value="lotte">롯데카드</option></select></label>
               <label>카드번호<input value={cardForm.number} onChange={(event) => setCardForm((current) => ({ ...current, number: formatCardNumber(event.target.value) }))} inputMode="numeric" placeholder="1234-5678-9012-3456" /></label>
               <label>유효기간<input value={cardForm.expiry} onChange={(event) => setCardForm((current) => ({ ...current, expiry: formatCardExpiry(event.target.value) }))} placeholder="MM/YY" /></label>
               <label>CVC<input value={cardForm.cvc} onChange={(event) => setCardForm((current) => ({ ...current, cvc: event.target.value.replace(/\D/g, '').slice(0, 4) }))} inputMode="numeric" placeholder="123" /></label>
-              <button className="secondaryButton" type="button" onClick={() => {
+              <button className="secondaryButton" type="button" onClick={async () => {
                 if (cardForm.number.replace(/\D/g, '').length < 12 || !cardForm.expiry || cardForm.cvc.length < 3) {
                   window.alert('카드번호, 유효기간, CVC를 입력해 주세요.');
                   return;
                 }
-                setRegisteredCard({ ...cardForm, masked: `****-****-****-${cardForm.number.replace(/\D/g, '').slice(-4)}` });
+                const response = await fetch('/api/payment/cards', {
+                  method: 'POST',
+                  headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userEmail: user.email, ...cardForm }),
+                });
+                const payload = await response.json();
+                if (!response.ok) {
+                  window.alert(payload.message || '카드 등록 실패');
+                  return;
+                }
+                const masked = payload?.data?.payloadJson
+                  ? parseRecordPayload(payload.data.payloadJson).masked
+                  : `****-****-****-${cardForm.number.replace(/\D/g, '').slice(-4)}`;
+                setRegisteredCard({ ...cardForm, masked });
+                setSavedCards((items) => payload?.data ? [payload.data, ...items] : items);
               }}>카드등록</button>
               {registeredCard && <p className="formSuccess">{registeredCard.masked} 카드가 등록되었습니다.</p>}
             </div>
@@ -2752,8 +3325,12 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
           )}
           {paymentMethod === 'point' && (
             <div className="paymentDetailBox">
-              <p>보유 마일리지 18,400P 중 결제 가능 금액을 사용합니다.</p>
-              <input defaultValue="18400" />
+              <p>보유 마일리지 {availableMileage.toLocaleString('ko-KR')}P 중 결제 가능 금액을 사용합니다.</p>
+              <input
+                value={useMileage}
+                onChange={(event) => setUseMileage(Math.max(0, Math.min(Number(event.target.value.replace(/\D/g, '') || 0), availableMileage)))}
+                inputMode="numeric"
+              />
             </div>
           )}
           <div className="checkoutTotal">
@@ -2769,25 +3346,27 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
                 headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({
                   userEmail: user.email,
-                  receiverName: user.name,
-                  address: user.address,
+                  receiverName: shippingForm.receiverName,
+                  address: shippingForm.address,
                   paymentMethod,
                   cardCompany: paymentMethod === 'card' ? cardForm.company : '',
                   cardNumber: paymentMethod === 'card' ? cardForm.number : '',
                   registeredCard: paymentMethod === 'card' ? registeredCard?.masked || '' : '',
                   depositConfirmed,
                   couponId: selectedCoupon,
+                  couponTitle: selectedCouponData?.title || '',
+                  useMileage: mileageDiscount,
                   productId: firstItem?.product?.id || '',
                   productName: firstItem?.product?.name || '주문 상품',
                   productImage: firstItem?.product?.image || '',
                   brand: firstItem?.product?.brand || 'VUL Shop',
-                  size: 'M',
+                  size: firstItem?.size || 'M',
                   quantity: firstItem?.quantity || 1,
-                  itemsSummary: cart.map((item) => `${item.product.name} ${item.quantity}개`).join(', '),
+                  itemsSummary: cart.map((item) => `${item.product.name} ${item.size || 'M'} ${item.quantity}개`).join(', '),
                   total,
                   couponDiscount,
                   paymentTotal,
-                  items: cart.map((item) => `${item.product.id}:${item.quantity}`).join(','),
+                  items: cart.map((item) => `${item.product.id}:${item.quantity}:${item.size || 'M'}`).join(','),
                 }),
               });
               const payload = await response.json();
@@ -2796,6 +3375,7 @@ function CheckoutPage({ cart, navigate, user, setLastOrderKey }) {
                 localStorage.setItem('vulshop.lastOrderKey', recordKey);
                 setLastOrderKey(recordKey);
               }
+              await clearCart?.();
               navigate(recordKey ? `/delivery?order=${encodeURIComponent(recordKey)}` : '/delivery');
             }}
             disabled={(paymentMethod === 'bank' && !depositConfirmed) || (paymentMethod === 'card' && !registeredCard)}
@@ -2884,7 +3464,74 @@ function LoginPage({ navigate, setUser, redirectTo = '/mypage', onDone }) {
         <label>비밀번호<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
         {error && <p className="formError">{error}</p>}
         <button className="primaryButton" type="submit">로그인</button>
+        <button className="textButton" type="button" onClick={() => navigate('/find-password')}>비밀번호 찾기</button>
         <button className="textButton" type="button" onClick={() => navigate('/register')}>회원가입</button>
+      </form>
+    </section>
+  );
+}
+
+function ForgotPasswordPage({ navigate }) {
+  const [email, setEmail] = useState('');
+  const [result, setResult] = useState(null);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const response = await fetch('/api/auth/password-reset/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const payload = await response.json();
+    setResult(payload?.data || null);
+  };
+
+  return (
+    <section className="authPage">
+      <form className="authCard" onSubmit={submit}>
+        <h1>비밀번호 찾기</h1>
+        <label>이메일<input value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+        <button className="primaryButton" type="submit">재설정 토큰 요청</button>
+        {result && (
+          <div className="dataPanel">
+            <strong>재설정 토큰</strong>
+            <p>{result.resetToken}</p>
+            <button className="secondaryButton" type="button" onClick={() => navigate(`/reset-password?token=${encodeURIComponent(result.resetToken)}&email=${encodeURIComponent(email)}`)}>비밀번호 재설정</button>
+          </div>
+        )}
+        <button className="textButton" type="button" onClick={() => navigate('/login')}>로그인으로</button>
+      </form>
+    </section>
+  );
+}
+
+function ResetPasswordPage({ navigate }) {
+  const params = new URLSearchParams(window.location.search);
+  const [token, setToken] = useState(params.get('token') || '');
+  const [email, setEmail] = useState(params.get('email') || '');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const response = await fetch('/api/auth/password-reset/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, email, newPassword: password }),
+    });
+    const payload = await response.json();
+    setMessage(response.ok ? `재설정 요청이 처리되었습니다. decoded=${payload?.data?.decodedToken || ''}` : payload.message || '재설정 실패');
+  };
+
+  return (
+    <section className="authPage">
+      <form className="authCard" onSubmit={submit}>
+        <h1>비밀번호 재설정</h1>
+        <label>토큰<input value={token} onChange={(event) => setToken(event.target.value)} /></label>
+        <label>이메일<input value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+        <label>새 비밀번호<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+        {message && <p className="formSuccess">{message}</p>}
+        <button className="primaryButton" type="submit">재설정</button>
       </form>
     </section>
   );
@@ -2981,19 +3628,22 @@ function CommunityPage({ posts, navigate, user, requireLogin }) {
         </div>
         <button className="primaryButton" onClick={() => (user ? navigate('/community/write') : requireLogin('/community/write', '커뮤니티 글쓰기는 회원만 이용할 수 있습니다.'))}>글쓰기</button>
       </div>
-      <div className="communityGrid">
-        {posts.map((post) => (
-          <article className="communityCard" key={post.id} onClick={() => navigate(`/community/${post.id}`)}>
-            <img src={post.image} alt={post.title} onError={(event) => { event.currentTarget.src = fallbackImage(post.title); }} />
-            <div>
-              <span>{post.author} · {post.createdAt}</span>
-              <h2>{post.title}</h2>
-              <p dangerouslySetInnerHTML={{ __html: post.body }}></p>
-              <small>좋아요 {post.likes} · 댓글 {post.comments}</small>
-            </div>
-          </article>
-        ))}
-      </div>
+      {posts.length === 0
+        ? <EmptyState title="작성된 게시글이 없습니다" action="글쓰기" onClick={() => (user ? navigate('/community/write') : requireLogin('/community/write', '커뮤니티 글쓰기는 회원만 이용할 수 있습니다.'))} />
+        : <div className="communityGrid">
+          {posts.map((post) => (
+            <article className="communityCard" key={post.id} onClick={() => navigate(`/community/${post.id}`)}>
+              <img src={post.image} alt={post.title} onError={(event) => { event.currentTarget.src = fallbackImage(post.title); }} />
+              <div>
+                <span>{post.author} · {post.createdAt}</span>
+                <h2>{post.title}</h2>
+                <p dangerouslySetInnerHTML={{ __html: post.body }}></p>
+                <small>좋아요 {post.likes} · 댓글 {post.comments}</small>
+              </div>
+            </article>
+          ))}
+        </div>
+      }
     </section>
   );
 }
@@ -3001,8 +3651,10 @@ function CommunityPage({ posts, navigate, user, requireLogin }) {
 function CommunityDetailPage({ post, navigate, user, requireLogin }) {
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState(post.replies);
+  const [commentMessage, setCommentMessage] = useState('');
+  const [liked, setLiked] = useState(false);
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     if (!user) {
       requireLogin(`/community/${post.id}`, '댓글 작성은 회원만 이용할 수 있습니다.');
@@ -3010,40 +3662,73 @@ function CommunityDetailPage({ post, navigate, user, requireLogin }) {
     }
     if (!comment.trim()) return;
     const body = comment.trim();
-    fetch(`/api/community/posts/${post.numericId || String(post.id).replace('c-db-', '')}/comments`, {
-      method: 'POST',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ author: user.name, body }),
-    })
-      .then((response) => response.ok ? response.json() : null)
-      .then((payload) => setComments(payload?.data?.replies || [body, ...comments]))
-      .catch(() => setComments((items) => [body, ...items]));
-    setComment('');
+    try {
+      const response = await fetch(`/api/community/posts/${post.numericId || String(post.id).replace('c-db-', '')}/comments`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author: user.name, body }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || '댓글 등록 실패');
+      }
+      setComments(payload?.data?.replies || []);
+      setComment('');
+      setCommentMessage('댓글이 등록되었습니다.');
+    } catch (error) {
+      setCommentMessage(`댓글 등록 실패: ${error.message}`);
+    }
   };
 
   return (
     <section className="communityDetail">
       <button className="backButton" onClick={() => navigate('/community')}>커뮤니티로</button>
       <article className="communityPost">
-        <img src={post.image} alt={post.title} onError={(event) => { event.currentTarget.src = fallbackImage(post.title); }} />
-        <div>
-          <span>{post.author} · {post.createdAt}</span>
+        <div className="communityPostHeader">
           <h1>{post.title}</h1>
-          <p dangerouslySetInnerHTML={{ __html: post.body }}></p>
-          <small>좋아요 {post.likes} · 댓글 {comments.length}</small>
+          <span>{post.author} · {post.createdAt}</span>
+        </div>
+        <p dangerouslySetInnerHTML={{ __html: post.body }}></p>
+        {post.image && <img src={post.image} alt={post.title} onError={(event) => { event.currentTarget.src = fallbackImage(post.title); }} />}
+        <div className="communityPostActions">
+          <small>좋아요 {Number(post.likes || 0) + (liked ? 1 : 0)} · 댓글 {comments.length}</small>
+          <button className="secondaryButton" onClick={async () => {
+            if (!user) {
+              requireLogin(`/community/${post.id}`, '좋아요는 회원만 이용할 수 있습니다.');
+              return;
+            }
+            const targetId = String(post.numericId || String(post.id).replace('c-db-', ''));
+            if (liked) {
+              await fetch(`/api/likes/community/${encodeURIComponent(targetId)}?userEmail=${encodeURIComponent(user.email)}`, {
+                method: 'DELETE',
+                headers: authHeaders(),
+              });
+              setLiked(false);
+            } else {
+              await fetch(`/api/likes/community/${encodeURIComponent(targetId)}`, {
+                method: 'POST',
+                headers: formHeaders(),
+                body: new URLSearchParams({ userEmail: user.email, targetId, title: post.title, image: post.image || '', author: post.author }),
+              });
+              setLiked(true);
+            }
+          }}>{liked ? '좋아요 취소' : '좋아요'}</button>
         </div>
       </article>
       <section className="commentPanel">
-        <h2>댓글</h2>
+        <div className="sectionTitle">
+          <h2>댓글</h2>
+        </div>
         <form onSubmit={submit}>
           <input value={comment} onChange={(event) => setComment(event.target.value)} placeholder={user ? '댓글을 입력해줘' : '로그인 후 댓글을 작성할 수 있어요'} />
           <button className="primaryButton" type="submit">등록</button>
         </form>
+        {commentMessage && <small>{commentMessage}</small>}
         <div className="commentList">
           {comments.map((item, index) => (
-            <article key={`${item}-${index}`}>
-              <strong>{index === 0 && item === comment ? '나' : `핏친구${index + 1}`}</strong>
-              <p dangerouslySetInnerHTML={{ __html: item }}></p>
+            <article key={`${typeof item === 'object' ? item.body : item}-${index}`}>
+              <strong>{typeof item === 'object' ? item.author : '익명'}</strong>
+              <p dangerouslySetInnerHTML={{ __html: typeof item === 'object' ? item.body : item }}></p>
             </article>
           ))}
         </div>
@@ -3056,8 +3741,10 @@ function CommunityWritePage({ setCommunityPosts, navigate, user }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [preview, setPreview] = useState('');
+  const [serverImage, setServerImage] = useState('');
+  const [message, setMessage] = useState('');
 
-  const upload = (event) => {
+  const upload = async (event) => {
     const file = event.target.files?.[0];
     if (file) {
       setPreview(URL.createObjectURL(file));
@@ -3065,43 +3752,56 @@ function CommunityWritePage({ setCommunityPosts, navigate, user }) {
       formData.append('file', file);
       formData.append('usage', 'community');
       formData.append('userEmail', user.email);
-      fetch('/api/files/upload', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: formData,
-      }).catch(() => {});
+      try {
+        const response = await fetch('/api/files/upload', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: formData,
+        });
+        const payload = await response.json();
+        if (response.ok) {
+          setServerImage(parseRecordPayload(payload?.data?.payloadJson).storedPath || '');
+        }
+      } catch {
+        setServerImage('');
+      }
     }
   };
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     if (!title.trim() || !body.trim()) return;
     const nextPost = {
       title,
       body,
       author: user.name,
-      image: preview || 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=800&q=80',
+      image: serverImage || '',
       likes: 0,
       comments: 0,
       createdAt: '방금 전',
     };
-    fetch('/api/community/posts', {
-      method: 'POST',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify(nextPost),
-    })
-      .then((response) => response.ok ? response.json() : null)
-      .then((payload) => {
-        setCommunityPosts((posts) => [payload?.data || { ...nextPost, id: `c-new-${Date.now()}`, replies: [] }, ...posts]);
-        setTitle('');
-        setBody('');
-        setPreview('');
-        navigate('/community');
-      })
-      .catch(() => {
-        setCommunityPosts((posts) => [{ ...nextPost, id: `c-new-${Date.now()}`, replies: [] }, ...posts]);
-        navigate('/community');
+    try {
+      const response = await fetch('/api/community/posts', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(nextPost),
       });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || '게시글 등록 실패');
+      }
+      setCommunityPosts((posts) => [payload.data, ...posts]);
+      setTitle('');
+      setBody('');
+      setPreview('');
+      setServerImage('');
+      if (dangerousPayloadPattern.test(body)) {
+        reportDiscovery('xss', 'stored-xss-community').catch(() => {});
+      }
+      navigate('/community');
+    } catch (error) {
+      setMessage(`게시글 등록 실패: ${error.message}`);
+    }
   };
 
   return (
@@ -3112,6 +3812,7 @@ function CommunityWritePage({ setCommunityPosts, navigate, user }) {
         <label>내용<textarea value={body} onChange={(event) => setBody(event.target.value)} placeholder="편하게 말하듯이 적어주세요." /></label>
         <label>이미지<input type="file" accept="image/*" onChange={upload} /></label>
         {preview && <img className="uploadPreview" src={preview} alt="업로드 미리보기" />}
+        {message && <p className="formError">{message}</p>}
         <button className="primaryButton" type="submit">등록하기</button>
       </form>
     </section>
@@ -3119,12 +3820,13 @@ function CommunityWritePage({ setCommunityPosts, navigate, user }) {
 }
 
 function EventPage({ navigate, products: eventProducts = [] }) {
-  const eventCards = [
-    ['STYLE WEEK', '최대 35% 시즌 특가', '인기 아우터와 팬츠를 이번 주 한정 가격으로 만나보세요.', '/sale'],
-    ['CHECK-IN', '7일 출석 쿠폰팩', '매일 방문하면 장바구니 쿠폰과 마일리지가 쌓입니다.', '/event'],
-    ['NEW MEMBER', '신규 회원 첫 구매 혜택', '가입 즉시 15% 쿠폰과 무료배송 혜택을 받을 수 있습니다.', '/register'],
-    ['RANKING DEAL', '랭킹 상품 하루 특가', '오늘 많이 본 상품만 골라 특별가로 제안합니다.', '/ranking'],
-  ];
+  const [eventCards, setEventCards] = useState([]);
+  React.useEffect(() => {
+    fetch('/api/events')
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => setEventCards(Array.isArray(payload?.data) ? payload.data.map(eventFromRecord) : []))
+      .catch(() => setEventCards([]));
+  }, []);
 
   return (
     <section className="eventPage">
@@ -3137,7 +3839,7 @@ function EventPage({ navigate, products: eventProducts = [] }) {
         <button className="primaryButton" onClick={() => navigate('/sale')}>특가 상품 보기</button>
       </div>
       <div className="eventGrid">
-        {eventCards.map(([label, title, body, path]) => (
+        {eventCards.length === 0 ? <EmptyState title="진행 중인 이벤트가 없습니다" action="상품 보러가기" onClick={() => navigate('/recommend')} /> : eventCards.map(({ label, title, body, path }) => (
           <article key={title}>
             <span>{label}</span>
             <h2>{title}</h2>
@@ -3159,6 +3861,28 @@ function EventPage({ navigate, products: eventProducts = [] }) {
       </div>
     </section>
   );
+}
+
+const EVENT_TYPE_LABELS = {
+  ATTENDANCE: '출석 이벤트',
+  PARTNER_NOTICE: '파트너 공지',
+  SALE: '세일 이벤트',
+  COUPON: '쿠폰 이벤트',
+  REVIEW: '리뷰 이벤트',
+  RAFFLE: '래플',
+  NOTICE: '공지사항',
+  EVENT: '이벤트',
+};
+
+function eventFromRecord(record) {
+  const payload = safeJson(record.payloadJson);
+  const rawType = payload.eventType || record.status || 'EVENT';
+  return {
+    label: EVENT_TYPE_LABELS[rawType] || rawType,
+    title: payload.title || record.recordKey,
+    body: [payload.reward, payload.startAt && payload.endAt ? `${payload.startAt} ~ ${payload.endAt}` : ''].filter(Boolean).join(' · ') || record.status,
+    path: payload.eventType === 'ATTENDANCE' ? '/event' : '/sale',
+  };
 }
 
 function NotFound({ navigate }) {
@@ -3271,6 +3995,7 @@ function AdminEntry({ navigate, path, admin, logout }) {
     ['system', '시스템/보안'],
   ];
   const [dashboardCounts, setDashboardCounts] = useState({ users: 0, partners: 0, products: 0, orders: 0, cs: 0 });
+  const [hourlyOrders, setHourlyOrders] = useState([]);
   React.useEffect(() => {
     if (section !== 'dashboard') return;
     Promise.all([
@@ -3287,6 +4012,14 @@ function AdminEntry({ navigate, path, admin, logout }) {
         orders: orders?.data?.filter?.((item) => item.domainType === 'ORDER')?.length || 0,
         cs: cs?.data?.length || 0,
       });
+      const buckets = new Array(5).fill(0);
+      (orders?.data || [])
+        .filter((item) => item.domainType === 'ORDER')
+        .forEach((item) => {
+          const hour = new Date(item.createdAt).getHours();
+          buckets[Math.min(4, Math.floor(hour / 5))] += 1;
+        });
+      setHourlyOrders(buckets);
     }).catch(() => {});
   }, [section]);
   const metrics = [
@@ -3387,9 +4120,32 @@ function AdminEntry({ navigate, path, admin, logout }) {
           </div>
         </header>
         {section === 'partners' ? (
-          <AdminApprovalPanel title="파트너 승인 관리" endpoint="/api/admin/partners" approvePath={(item) => `/api/admin/partners/${item.id}/approve`} revokePath={(item) => `/api/admin/partners/${item.id}/revoke`} label={(item) => `${item.companyName} · ${item.ownerName}`} />
+          <AdminApprovalPanel
+            title="파트너 승인 관리"
+            endpoint="/api/admin/partners"
+            approvePath={(item) => `/api/admin/partners/${item.id}/approve`}
+            revokePath={(item) => `/api/admin/partners/${item.id}/revoke`}
+            suspendPath={(item) => `/api/admin/partners/${item.id}/suspend`}
+            label={(item) => `${item.companyName || '?'} · ${item.ownerName || '?'}`}
+            detail={(item) => `사업자번호: ${item.businessNo || '-'} · 판매분야: ${item.salesCategory || '-'} · 연락처: ${item.phone || '-'} · ${item.email || '-'}`}
+            splitBy={(item) => {
+              const s = (item.status || '').toUpperCase();
+              return s === 'APPROVED' ? 'approved' : 'pending';
+            }}
+          />
         ) : section === 'products' ? (
-          <AdminApprovalPanel title="판매자 상품 승인 관리" endpoint="/api/admin/products" approvePath={(item) => `/api/admin/products/${item.id}/approve`} revokePath={(item) => `/api/admin/products/${item.id}/revoke`} label={(item) => `${item.brand} · ${item.name}`} />
+          <AdminApprovalPanel
+            title="판매자 상품 승인 관리"
+            endpoint="/api/admin/products"
+            approvePath={(item) => `/api/admin/products/${item.id}/approve`}
+            revokePath={(item) => `/api/admin/products/${item.id}/revoke`}
+            label={(item) => `${item.brand || '?'} · ${item.name || '?'}`}
+            detail={(item) => `카테고리: ${item.category || '-'} · 가격: ${item.price ? item.price.toLocaleString() + '원' : '-'} · 판매자: ${item.sellerEmail || '-'}`}
+            splitBy={(item) => {
+              const s = (item.approvalStatus || item.status || '').toUpperCase();
+              return s === 'APPROVED' ? 'approved' : 'pending';
+            }}
+          />
         ) : section !== 'dashboard' && adminSections[section] ? (
           <AdminSectionPanel sectionKey={section} section={adminSections[section]} />
         ) : (
@@ -3443,7 +4199,7 @@ function AdminEntry({ navigate, path, admin, logout }) {
               <h2>시간대별 주문</h2>
             </div>
             <div className="barChart" aria-label="시간대별 주문 차트">
-              {[dashboardCounts.users, dashboardCounts.partners, dashboardCounts.products, dashboardCounts.orders, dashboardCounts.cs].map((count, index) => {
+              {(hourlyOrders.length ? hourlyOrders : [0, 0, 0, 0, 0]).map((count, index) => {
                 const height = Math.max(8, Math.min(100, count * 12));
                 return (
                 <span style={{ height: `${height}%` }} key={index}></span>
@@ -3458,8 +4214,9 @@ function AdminEntry({ navigate, path, admin, logout }) {
   );
 }
 
-function AdminApprovalPanel({ title, endpoint, approvePath, revokePath, label }) {
+function AdminApprovalPanel({ title, endpoint, approvePath, revokePath, suspendPath, label, detail, splitBy }) {
   const [items, setItems] = useState([]);
+  const [tab, setTab] = useState('pending');
 
   const load = React.useCallback(async () => {
     const response = await fetch(endpoint, { headers: adminHeaders() });
@@ -3476,6 +4233,10 @@ function AdminApprovalPanel({ title, endpoint, approvePath, revokePath, label })
     load();
   };
 
+  const pending = splitBy ? items.filter((item) => splitBy(item) === 'pending') : items;
+  const approved = splitBy ? items.filter((item) => splitBy(item) === 'approved') : [];
+  const displayed = splitBy ? (tab === 'pending' ? pending : approved) : items;
+
   return (
     <section className="adminSectionPage single">
       <article className="adminPanel wide">
@@ -3483,18 +4244,33 @@ function AdminApprovalPanel({ title, endpoint, approvePath, revokePath, label })
           <h2>{title}</h2>
           <button onClick={load}>새로고침</button>
         </div>
+        {splitBy && (
+          <div className="adminTabs">
+            <button className={tab === 'pending' ? 'activeTab' : ''} onClick={() => setTab('pending')}>
+              대기 ({pending.length})
+            </button>
+            <button className={tab === 'approved' ? 'activeTab' : ''} onClick={() => setTab('approved')}>
+              승인됨 ({approved.length})
+            </button>
+          </div>
+        )}
         <div className="adminTable">
-          {items.length === 0 ? <p>항목이 없습니다.</p> : items.map((item, index) => (
-            <div className="adminTableRow" key={item.id || index}>
-              <strong>{String(index + 1).padStart(2, '0')} · {label(item)}</strong>
-              <em className={adminStatusClass(item.status || item.approvalStatus || 'PENDING')}>{item.status || item.approvalStatus || 'PENDING'}</em>
-              <span>{item.email || item.sellerEmail || item.memo || item.description || '승인 상태를 관리합니다.'}</span>
-              <div>
-                <button className="secondaryButton" onClick={() => run(approvePath(item))}>승인</button>
-                {revokePath && <button className="secondaryButton" onClick={() => run(revokePath(item))}>철회</button>}
+          {displayed.length === 0 ? <p>항목이 없습니다.</p> : displayed.map((item, index) => {
+            const statusVal = item.status || item.approvalStatus || 'PENDING';
+            return (
+              <div className="adminTableRow" key={item.id || index}>
+                {item.imageUrl && <img src={item.imageUrl} alt={label(item)} style={{width: 56, height: 56, objectFit: 'cover', borderRadius: 4, flexShrink: 0}} />}
+                <strong>{String(index + 1).padStart(2, '0')} · {label(item)}</strong>
+                <em className={adminStatusClass(statusVal)}>{statusVal}</em>
+                {detail ? <span>{detail(item)}</span> : <span>{item.email || item.sellerEmail || item.memo || item.description || '승인 상태를 관리합니다.'}</span>}
+                <div>
+                  {tab !== 'approved' && <button className="secondaryButton" onClick={() => run(approvePath(item))}>승인</button>}
+                  {revokePath && tab === 'approved' && <button className="secondaryButton" onClick={() => run(revokePath(item))}>철회</button>}
+                  {suspendPath && tab === 'approved' && <button className="secondaryButton" onClick={() => run(suspendPath(item))}>자격정지</button>}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </article>
     </section>
@@ -3521,23 +4297,23 @@ const adminOperationConfig = {
     label: (item) => `${item.title || '게시글'} · ${item.author || '-'}`,
     status: (item) => `댓글 ${item.comments || 0}`,
     detail: (item) => item.body || '게시글 내용 없음',
-    actions: [],
+    actions: [
+      { label: '삭제', method: 'DELETE', path: (item) => `/api/admin/community/posts/${item.numericId || item.id}` },
+    ],
   },
   employees: {
     endpoint: '/api/admin/employees',
-    empty: '직원 권한 변경 요청이 없습니다.',
+    empty: '등록된 직원이 없습니다.',
     columns: ['직원', '상태', '상세'],
-    label: (item) => item.recordKey || item.domain || 'employee-role',
-    status: (item) => item.status || 'PENDING',
-    detail: (item) => item.payloadJson || '운영자 권한 관리',
-    createActions: [
-      { label: '직원 계정 생성', path: '/api/admin/employees', body: (memo) => ({ email: `staff-${Date.now()}@vul.com`, team: '운영', role: 'CS_MANAGER', memo }) },
-    ],
+    label: (item) => { const p = safeJson(item.payloadJson); return `${p.name || p.email || item.ownerKey || '직원'} · ${p.team || '-'}`; },
+    status: (item) => item.status || 'ACTIVE',
+    detail: (item) => { const p = safeJson(item.payloadJson); return `역할: ${p.role || '-'} · 이메일: ${p.email || item.ownerKey || '-'}`; },
     actions: [
       { label: '정지', method: 'POST', path: (item) => `/api/admin/employees/${item.recordKey}/status`, body: () => ({ status: 'SUSPENDED', action: 'suspend' }) },
-      { label: '승급', method: 'POST', path: (item) => `/api/admin/employees/${item.recordKey}/status`, body: () => ({ status: 'PROMOTED', role: 'MANAGER' }) },
+      { label: '강등', method: 'POST', path: (item) => `/api/admin/employees/${item.recordKey}/status`, body: () => ({ status: 'DEMOTED', role: 'CS_MANAGER' }) },
       { label: '삭제', method: 'POST', path: (item) => `/api/admin/employees/${item.recordKey}/status`, body: () => ({ status: 'DELETED', action: 'delete' }) },
     ],
+    employeeForm: true,
   },
   orders: {
     endpoint: '/api/admin/orders',
@@ -3545,13 +4321,18 @@ const adminOperationConfig = {
     columns: ['주문번호', '상태', '상세'],
     label: (item) => item.recordKey || `order-${item.id}`,
     status: (item) => item.status,
-    detail: (item) => item.payloadJson,
+    detail: (item) => {
+      const p = safeJson(item.payloadJson);
+      if (item.domainType === 'ORDER') {
+        return `${p.productName || p.name || '-'} · ${p.quantity ? p.quantity + '개' : ''} · ${p.totalPrice ? Number(p.totalPrice).toLocaleString() + '원' : p.amount ? Number(p.amount).toLocaleString() + '원' : ''}`.replace(/ · $/, '');
+      }
+      return `정산금액: ${p.amount ? Number(p.amount).toLocaleString() + '원' : '-'} · ${p.sellerEmail || '-'}`;
+    },
     actions: [
       { label: '결제완료', when: (item) => item.domainType === 'ORDER', method: 'POST', path: (item) => `/api/admin/orders/${item.recordKey}/status`, body: () => ({ status: 'PAYMENT_COMPLETED' }) },
       { label: '상품준비', when: (item) => item.domainType === 'ORDER', method: 'POST', path: (item) => `/api/admin/orders/${item.recordKey}/status`, body: () => ({ status: 'PREPARING_PRODUCT' }) },
       { label: '배송중', when: (item) => item.domainType === 'ORDER', method: 'POST', path: (item) => `/api/admin/orders/${item.recordKey}/status`, body: () => ({ status: 'SHIPPING' }) },
       { label: '배송완료', when: (item) => item.domainType === 'ORDER', method: 'POST', path: (item) => `/api/admin/orders/${item.recordKey}/status`, body: () => ({ status: 'DELIVERED' }) },
-      { label: '구매확정', when: (item) => item.domainType === 'ORDER', method: 'POST', path: (item) => `/api/admin/orders/${item.recordKey}/status`, body: () => ({ status: 'CONFIRMED' }) },
       { label: '반품접수', when: (item) => item.domainType === 'ORDER', method: 'POST', path: (item) => `/api/admin/orders/${item.recordKey}/status`, body: () => ({ status: 'RETURN_REQUESTED' }) },
       { label: '정산확정', when: (item) => item.domainType === 'SETTLEMENT', method: 'POST', path: () => '/api/admin/settlements/confirm', body: (memo, item) => ({ recordKey: item.recordKey, amount: safeJson(item.payloadJson).amount, memo }) },
     ],
@@ -3568,11 +4349,13 @@ const adminOperationConfig = {
       const body = payload.body || payload.content || item.payloadJson || '';
       // VULN-007: attachmentName을 HTML 이스케이프 없이 렌더링 → 악의적 파일명으로 XSS 발동
       const attachment = payload.attachmentName || '';
-      return `<strong>${title}</strong><br />${body}${attachment ? `<br />첨부파일: ${attachment}` : ''}`;
+      const attachmentPath = payload.attachmentPath || '';
+      const attachmentHtml = attachment ? `<br />첨부파일: ${attachmentPath ? `<a href="${attachmentPath}" target="_blank">${attachment}</a>` : attachment}` : '';
+      return `<strong>${title}</strong><br />${body}${attachmentHtml}`;
     },
     rawDetail: true,
     actions: [
-      { label: '답변 등록', method: 'POST', path: (item) => `/api/admin/cs/inquiries/${item.recordKey}/answer`, body: (memo) => ({ answer: memo || '확인 후 안내드립니다.', answeredBy: 'root@vul.com' }) },
+      { label: '답변 등록', inline: true, method: 'POST', path: (item) => `/api/admin/cs/inquiries/${item.recordKey}/answer`, body: (memo) => ({ answer: memo || '확인 후 안내드립니다.', answeredBy: 'root@vul.com' }) },
     ],
   },
   promotions: {
@@ -3581,11 +4364,8 @@ const adminOperationConfig = {
     columns: ['쿠폰', '상태', '상세'],
     label: (item) => item.recordKey || `coupon-${item.id}`,
     status: (item) => item.status || 'ISSUED',
-    detail: (item) => item.payloadJson || '쿠폰 발급 기록',
-    createActions: [
-      { label: '전회원 쿠폰 발급', path: '/api/admin/promotions/coupons', body: (memo) => ({ userEmail: 'GLOBAL', title: '관리자 발급 쿠폰', discount: '15%', memo }) },
-      { label: '이벤트 생성', path: '/api/admin/promotions/events', body: (memo) => ({ title: '관리자 생성 이벤트', reward: '출석 쿠폰팩', memo }) },
-    ],
+    detail: (item) => { const p = safeJson(item.payloadJson); return `대상: ${p.userEmail || '-'} · 할인: ${p.discount || p.discountRate || '-'} · ${p.title || '-'}`; },
+    promotionsForm: true,
     actions: [],
   },
   analytics: {
@@ -3594,16 +4374,20 @@ const adminOperationConfig = {
     columns: ['지표', '상태', '상세'],
     label: (item) => item.recordKey || `sales-${item.id}`,
     status: (item) => item.status,
-    detail: (item) => item.payloadJson,
+    detail: (item) => { const p = safeJson(item.payloadJson); const entries = Object.entries(p).filter(([k]) => k !== 'diagnosticNote'); return entries.length ? `항목 ${entries.length}개` : item.recordKey; },
+    expandable: true,
+    expandDetail: (item) => { const p = safeJson(item.payloadJson); return Object.entries(p).filter(([k]) => k !== 'diagnosticNote').map(([k, v]) => `<div><dt>${k}</dt><dd>${typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</dd></div>`).join(''); },
     actions: [],
   },
   system: {
-    endpoint: '/api/admin/system/audit-logs',
-    empty: '감사 로그 API가 준비되었습니다.',
-    columns: ['로그', '상태', '상세'],
-    label: (item) => item.recordKey || item.domain || 'audit-log',
-    status: (item) => item.status || 'READY',
-    detail: (item) => item.payloadJson || '권한/보안 설정과 감사 로그 확인',
+    endpoint: '/api/admin/system/security-settings',
+    empty: '보안 설정 항목이 없습니다.',
+    columns: ['설정', '상태', '상세'],
+    label: (item) => item.recordKey || item.domain || '보안설정',
+    status: (item) => item.status || 'ACTIVE',
+    detail: (item) => { const p = safeJson(item.payloadJson); const entries = Object.entries(p).filter(([k]) => k !== 'diagnosticNote'); return entries.length ? `설정 ${entries.length}개` : '보안 설정'; },
+    expandable: true,
+    expandDetail: (item) => { const p = safeJson(item.payloadJson); return Object.entries(p).filter(([k]) => k !== 'diagnosticNote').map(([k, v]) => `<div><dt>${k}</dt><dd>${typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</dd></div>`).join(''); },
     actions: [],
   },
 };
@@ -3611,8 +4395,12 @@ const adminOperationConfig = {
 function AdminSectionPanel({ sectionKey, section }) {
   const config = adminOperationConfig[sectionKey];
   const [items, setItems] = useState([]);
-  const [memo, setMemo] = useState('');
   const [message, setMessage] = useState('');
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [expandedDetail, setExpandedDetail] = useState(null);
+  const [rowInput, setRowInput] = useState('');
+  const [empForm, setEmpForm] = useState({ name: '', email: '', password: '', team: '', role: 'CS_MANAGER' });
+  const [promoForm, setPromoForm] = useState({ couponTitle: '', couponDiscount: '', eventTitle: '', eventReward: '' });
 
   const load = React.useCallback(async () => {
     if (!config?.endpoint) return;
@@ -3621,17 +4409,17 @@ function AdminSectionPanel({ sectionKey, section }) {
       const payload = await response.json();
       const data = payload.data;
       if (Array.isArray(data)) {
-        setItems(data);
+        setItems(sectionKey === 'users' ? data.filter((u) => u.role !== 'ADMIN') : data);
       } else if (data) {
         setItems([data]);
       } else {
         setItems([]);
       }
-      setMessage(payload.message || '관리 데이터를 불러왔습니다.');
+      setMessage('');
     } catch (error) {
       setMessage(`관리 API 요청 실패: ${error.message}`);
     }
-  }, [config]);
+  }, [config, sectionKey]);
 
   React.useEffect(() => {
     load();
@@ -3639,38 +4427,83 @@ function AdminSectionPanel({ sectionKey, section }) {
 
   const runAction = async (action, item = {}) => {
     try {
-      const response = await fetch(action.path(item), {
-        method: action.method || 'POST',
+      const method = action.method || 'POST';
+      const opts = {
+        method,
         headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(action.body?.(memo, item) || {}),
-      });
+      };
+      if (method !== 'DELETE') {
+        opts.body = JSON.stringify(action.body?.(rowInput || '', item) || {});
+      }
+      const response = await fetch(action.path(item), opts);
       const payload = await response.json();
-      setMessage(payload.message || `${action.label} 처리 완료`);
-      setMemo('');
+      setMessage(`${action.label} 처리 완료`);
+      setExpandedRow(null);
+      setRowInput('');
       load();
     } catch (error) {
       setMessage(`${action.label} 실패: ${error.message}`);
     }
   };
 
-  const runCreateAction = async (action) => {
+  const createEmployee = async () => {
+    if (!empForm.name || !empForm.email || !empForm.password) {
+      setMessage('이름, 이메일, 비밀번호를 모두 입력해주세요.');
+      return;
+    }
     try {
-      const response = await fetch(action.path, {
+      await fetch('/api/admin/users', {
         method: 'POST',
         headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(action.body(memo)),
+        body: JSON.stringify({ name: empForm.name, email: empForm.email, password: empForm.password, role: empForm.role }),
       });
-      const payload = await response.json();
-      setMessage(payload.message || `${action.label} 처리 완료`);
-      setMemo('');
+      await fetch('/api/admin/employees', {
+        method: 'POST',
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: empForm.name, email: empForm.email, team: empForm.team, role: empForm.role }),
+      });
+      setMessage('직원 계정이 생성되었습니다.');
+      setEmpForm({ name: '', email: '', password: '', team: '', role: 'CS_MANAGER' });
       load();
     } catch (error) {
-      setMessage(`${action.label} 실패: ${error.message}`);
+      setMessage(`직원 생성 실패: ${error.message}`);
     }
   };
 
+  const createPromo = async (type) => {
+    try {
+      if (type === 'coupon') {
+        const raw = String(promoForm.couponDiscount).replace('%', '').trim();
+        const parsed = parseInt(raw, 10);
+        if (isNaN(parsed) || parsed < 1 || parsed > 100) {
+          setMessage('할인율은 1~100 사이의 숫자여야 합니다.');
+          return;
+        }
+        const discountStr = `${parsed}%`;
+        await fetch('/api/admin/promotions/coupons', {
+          method: 'POST',
+          headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: promoForm.couponTitle || '관리자 발급 쿠폰', discount: discountStr, discountRate: parsed }),
+        });
+        setMessage('전회원에게 쿠폰이 발급되었습니다.');
+      } else {
+        await fetch('/api/admin/promotions/events', {
+          method: 'POST',
+          headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: promoForm.eventTitle || '관리자 생성 이벤트', reward: promoForm.eventReward || '출석 쿠폰팩' }),
+        });
+        setMessage('이벤트가 생성되었습니다.');
+      }
+      load();
+    } catch (error) {
+      setMessage(`생성 실패: ${error.message}`);
+    }
+  };
+
+  const showRightPanel = config?.employeeForm || config?.promotionsForm;
+
   return (
-    <section className="adminSectionPage">
+    <section className={`adminSectionPage${showRightPanel ? '' : ' single'}`}>
       <article className="adminPanel wide">
         <div className="sectionTitle">
           <h2>{section.title}</h2>
@@ -3687,32 +4520,84 @@ function AdminSectionPanel({ sectionKey, section }) {
                 {(config?.columns || ['대상', '상태', '상세']).map((column) => <strong key={column}>{column}</strong>)}
                 <strong>작업</strong>
               </div>
-              {items.map((item, index) => (
-                <div className="adminTableRow" key={item.id || item.recordKey || index}>
-                  <strong>{config.label(item)}</strong>
-                  <em className={adminStatusClass(config.status(item))}>{config.status(item)}</em>
-                  {config.rawDetail ? <span dangerouslySetInnerHTML={{ __html: config.detail(item) }} /> : <span>{config.detail(item)}</span>}
-                  <div>
-                    {(config.actions || []).filter((action) => !action.when || action.when(item)).map((action) => (
-                      <button className="secondaryButton" key={action.label} onClick={() => runAction(action, item)}>{action.label}</button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              {items.map((item, index) => {
+                const rowKey = item.id || item.recordKey || index;
+                const isExpanded = expandedRow === rowKey;
+                const inlineAction = (config.actions || []).find((a) => a.inline);
+                return (
+                  <React.Fragment key={rowKey}>
+                    <div className="adminTableRow">
+                      <strong>{config.label(item)}</strong>
+                      <em className={adminStatusClass(config.status(item))}>{config.status(item)}</em>
+                      {config.rawDetail ? <span className="wrapDetail" dangerouslySetInnerHTML={{ __html: config.detail(item) }} /> : <span>{config.detail(item)}</span>}
+                      <div>
+                        {(config.actions || []).filter((action) => !action.inline && (!action.when || action.when(item))).map((action) => (
+                          <button className="secondaryButton" key={action.label} onClick={() => runAction(action, item)}>{action.label}</button>
+                        ))}
+                        {inlineAction && (
+                          <button className="secondaryButton" onClick={() => { setExpandedRow(isExpanded ? null : rowKey); setRowInput(''); }}>
+                            {isExpanded ? '취소' : inlineAction.label}
+                          </button>
+                        )}
+                        {config.expandable && (
+                          <button className="secondaryButton" onClick={() => setExpandedDetail(expandedDetail === rowKey ? null : rowKey)}>
+                            {expandedDetail === rowKey ? '접기' : '펼치기'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {config.expandable && expandedDetail === rowKey && (
+                      <div className="detailExpandRow">
+                        <dl dangerouslySetInnerHTML={{ __html: config.expandDetail(item) }} />
+                      </div>
+                    )}
+                    {isExpanded && inlineAction && (
+                      <div className="inlineAnswerRow">
+                        <textarea value={rowInput} onChange={(e) => setRowInput(e.target.value)} placeholder="답변 내용을 입력하세요." rows={3} />
+                        <button className="primaryButton" onClick={() => runAction(inlineAction, item)}>등록</button>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </>
           )}
         </div>
       </article>
-      <article className="adminPanel">
-        <div className="sectionTitle">
-          <h2>운영 액션</h2>
-        </div>
-        <textarea value={memo} onChange={(event) => setMemo(event.target.value)} placeholder={`${section.title} 처리 메모 또는 답변 내용을 입력하세요.`}></textarea>
-        {(config?.createActions || []).map((action) => (
-          <button className="primaryButton" key={action.label} onClick={() => runCreateAction(action)}>{action.label}</button>
-        ))}
-        {(!config?.createActions?.length && !config?.actions?.length) && <button className="primaryButton" onClick={load}>운영 데이터 갱신</button>}
-      </article>
+      {config?.employeeForm && (
+        <article className="adminPanel">
+          <div className="sectionTitle">
+            <h2>직원 계정 생성</h2>
+          </div>
+          <label>이름<input value={empForm.name} onChange={(e) => setEmpForm((f) => ({ ...f, name: e.target.value }))} placeholder="홍길동" /></label>
+          <label>이메일<input value={empForm.email} onChange={(e) => setEmpForm((f) => ({ ...f, email: e.target.value }))} placeholder="staff@vul.com" type="email" /></label>
+          <label>비밀번호<input value={empForm.password} onChange={(e) => setEmpForm((f) => ({ ...f, password: e.target.value }))} placeholder="초기 비밀번호" type="password" /></label>
+          <label>팀<input value={empForm.team} onChange={(e) => setEmpForm((f) => ({ ...f, team: e.target.value }))} placeholder="운영팀" /></label>
+          <label>역할
+            <select value={empForm.role} onChange={(e) => setEmpForm((f) => ({ ...f, role: e.target.value }))}>
+              <option value="CS_MANAGER">CS 담당자</option>
+              <option value="MANAGER">매니저</option>
+              <option value="OPERATOR">운영자</option>
+              <option value="SELLER">판매자</option>
+            </select>
+          </label>
+          <button className="primaryButton" onClick={createEmployee}>직원 생성</button>
+        </article>
+      )}
+      {config?.promotionsForm && (
+        <article className="adminPanel">
+          <div className="sectionTitle">
+            <h2>프로모션 생성</h2>
+          </div>
+          <label>쿠폰 제목<input value={promoForm.couponTitle} onChange={(e) => setPromoForm((f) => ({ ...f, couponTitle: e.target.value }))} placeholder="전회원 할인 쿠폰" /></label>
+          <label>할인율<input value={promoForm.couponDiscount} onChange={(e) => setPromoForm((f) => ({ ...f, couponDiscount: e.target.value }))} placeholder="15%" /></label>
+          <button className="primaryButton" onClick={() => createPromo('coupon')}>전회원 쿠폰 발급</button>
+          <hr />
+          <label>이벤트 제목<input value={promoForm.eventTitle} onChange={(e) => setPromoForm((f) => ({ ...f, eventTitle: e.target.value }))} placeholder="출석 이벤트" /></label>
+          <label>리워드<input value={promoForm.eventReward} onChange={(e) => setPromoForm((f) => ({ ...f, eventReward: e.target.value }))} placeholder="출석 쿠폰팩" /></label>
+          <button className="primaryButton" onClick={() => createPromo('event')}>이벤트 생성</button>
+        </article>
+      )}
     </section>
   );
 }

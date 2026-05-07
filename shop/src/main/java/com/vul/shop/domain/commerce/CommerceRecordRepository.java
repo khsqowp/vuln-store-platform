@@ -8,5 +8,6 @@ public interface CommerceRecordRepository extends JpaRepository<CommerceRecordEn
 	List<CommerceRecordEntity> findByDomainTypeOrderByCreatedAtDesc(String domainType);
 	List<CommerceRecordEntity> findByDomainTypeAndOwnerKeyOrderByCreatedAtDesc(String domainType, String ownerKey);
 	Optional<CommerceRecordEntity> findByRecordKey(String recordKey);
+	boolean existsByRecordKey(String recordKey);
 	long countByDomainTypeAndRecordKeyStartingWith(String domainType, String recordKeyPrefix);
 }

@@ -149,12 +149,16 @@ CREATE TABLE IF NOT EXISTS order_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO users (name, email, password_hash, phone, address, role, status, created_at) VALUES
-('VUL 회원', 'member@vulshop.local', 'password123!', '010-1234-5678', '서울특별시 강남구 테헤란로 123', 'USER', 'ACTIVE', NOW()),
-('관리자', 'admin@vulshop.local', 'admin123!', '010-0000-0001', '서울특별시 성동구 운영센터', 'ADMIN', 'ACTIVE', NOW()),
-('판매자', 'seller@vulshop.local', 'seller123!', '010-0000-0002', '서울특별시 마포구 파트너센터', 'SELLER', 'ACTIVE', NOW()),
 ('관리자 테스트', 'root@vul.com', '3d6623bf4e0e098d7139131a5eba7a1f', '010-9000-0001', '서울특별시 강남구 관리자센터', 'ADMIN', 'ACTIVE', NOW()),
 ('파트너 테스트', 'part@vul.com', '5c7bc719c82e02364aaeaac78362e2c4', '010-9000-0002', '서울특별시 마포구 파트너센터', 'SELLER', 'ACTIVE', NOW()),
-('일반 사용자 테스트', 'user@vul.com', '8469d3af7f7adee2fc6d3e60dd59830b', '010-9000-0003', '서울특별시 성동구 고객센터', 'USER', 'ACTIVE', NOW());
+('일반 사용자 테스트', 'user@vul.com', '8469d3af7f7adee2fc6d3e60dd59830b', '010-9000-0003', '서울특별시 성동구 고객센터', 'USER', 'ACTIVE', NOW()),
+('김민준', 'minjun.kim@vul.com', 'bb73371be26ce565f9ef2b9c84575cc7', '010-1234-5678', '서울특별시 서초구 반포동 101호', 'USER', 'ACTIVE', NOW()),
+('이서연', 'seoyeon.lee@vul.com', '90171b6cba83dea3002857476e5a2330', '010-2345-6789', '경기도 성남시 분당구 정자동 202호', 'USER', 'ACTIVE', NOW()),
+('박지훈', 'jihoon.park@vul.com', '6c22569371eca177c3b73bcd96a7b335', '010-3456-7890', '서울특별시 강동구 천호동 303호', 'USER', 'ACTIVE', NOW()),
+('최수아', 'sua.choi@vul.com', '8e035ea8f58a467440c11000e95baa05', '010-4567-8901', '인천광역시 연수구 송도동 404호', 'USER', 'ACTIVE', NOW()),
+('정다은', 'daeun.jung@vul.com', '84976bb5b44f25238820a1ad747e91ca', '010-5678-9012', '경기도 수원시 팔달구 인계동 505호', 'USER', 'ACTIVE', NOW()),
+('한승호', 'seungho.han@vul.com', 'bb73371be26ce565f9ef2b9c84575cc7', '010-6789-0123', '부산광역시 해운대구 우동 606호', 'USER', 'SANCTIONED', NOW()),
+('오예진', 'yejin.oh@vul.com', '90171b6cba83dea3002857476e5a2330', '010-7890-1234', '대구광역시 수성구 범어동 707호', 'SELLER', 'ACTIVE', NOW());
 
 DROP PROCEDURE IF EXISTS seed_vul_products;
 DELIMITER $$
@@ -222,11 +226,6 @@ BEGIN
       (product_id_value, CONCAT('/api/product-images/', product_code_value, '/2.svg'), 'DETAIL', 3),
       (product_id_value, CONCAT('/api/product-images/', product_code_value, '/3.svg'), 'DETAIL', 4);
 
-      INSERT IGNORE INTO reviews (product_id, nickname, rating, body, image_url, created_at) VALUES
-      (product_id_value, CONCAT('핏체크', product_code_value, '-001'), 4.8, CONCAT(product_name_value, ' 실착감이 좋고 데일리로 입기 편합니다.'), CONCAT('https://loremflickr.com/800/800/fashion,person?lock=', (category_index * 1000 + i * 3 + 1)), DATE_SUB(NOW(), INTERVAL i DAY)),
-      (product_id_value, CONCAT('리뷰장인', product_code_value, '-002'), 4.7, CONCAT(product_name_value, ' 색감이 안정적이고 사이즈도 예상과 비슷합니다.'), CONCAT('https://loremflickr.com/800/800/fashion,person?lock=', (category_index * 1000 + i * 3 + 2)), DATE_SUB(NOW(), INTERVAL i + 1 DAY)),
-      (product_id_value, CONCAT('실착러', product_code_value, '-003'), 4.6, CONCAT(product_name_value, ' 가격 대비 마감이 괜찮아서 만족합니다.'), CONCAT('https://loremflickr.com/800/800/fashion,person?lock=', (category_index * 1000 + i * 3 + 3)), DATE_SUB(NOW(), INTERVAL i + 2 DAY));
-
       SET i = i + 1;
     END WHILE;
     SET category_index = category_index + 1;
@@ -236,26 +235,34 @@ DELIMITER ;
 CALL seed_vul_products();
 DROP PROCEDURE seed_vul_products;
 
-INSERT IGNORE INTO community_posts (id, title, body, author_nickname, image_url, like_count, created_at) VALUES
-(1, '오늘 출근룩 이 정도면 무난?', '블루종에 와이드 팬츠 조합인데 너무 편해 보이지만 않으면 좋겠음.', '핏감연구소', 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80&sig=community-1', 42, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-(2, '러닝화 데일리로 신어본 사람?', '쿠션 좋은 건 알겠는데 청바지에도 괜찮은지 궁금함.', '스니커즈헌터', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80&sig=community-2', 31, DATE_SUB(NOW(), INTERVAL 5 HOUR)),
-(3, '트렌치 코트 아직 입어도 되나', '저녁에는 쌀쌀해서 괜찮은데 낮에는 살짝 더워 보일까 고민 중.', '간절기준비', 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=900&q=80&sig=community-3', 27, DATE_SUB(NOW(), INTERVAL 1 DAY));
-
-INSERT IGNORE INTO community_comments (post_id, author_nickname, body, created_at) VALUES
-(1, '출근룩장인', '신발만 밝은 톤으로 가면 더 좋아 보일 듯.', DATE_SUB(NOW(), INTERVAL 90 MINUTE)),
-(1, '미니멀러버', '전체적으로 무난하고 깔끔함.', DATE_SUB(NOW(), INTERVAL 80 MINUTE)),
-(2, '러닝화러버', '슬림한 청바지만 아니면 생각보다 잘 맞아.', DATE_SUB(NOW(), INTERVAL 3 HOUR));
-
 INSERT IGNORE INTO partner_applications (company_name, owner_name, email, phone, business_no, sales_category, status, memo, created_at) VALUES
 ('주식회사 오로라웨어', '김파트너', 'partner@aurora.local', '010-2222-3333', '123-45-67890', 'top', 'PENDING', '상의 중심의 자체 제작 브랜드입니다.', NOW()),
 ('파트너 테스트 상사', '박파트너', 'part@vul.com', '010-9000-0002', '987-65-43210', 'outer', 'APPROVED', '테스트 파트너 계정용 승인 데이터입니다.', NOW());
 
 INSERT IGNORE INTO seller_product_applications (seller_email, category, brand, name, price, image_url, description, approval_status, created_at) VALUES
-('seller@vulshop.local', 'outer', 'AURORA PARTNER', '파트너 싱글 재킷', 89000, 'https://images.unsplash.com/photo-1523398002811-999ca8dec234?auto=format&fit=crop&w=900&q=85&sig=seller-1', '입점 판매자 등록 승인 대기 상품입니다.', 'PENDING', NOW());
+('part@vul.com', 'outer', 'AURORA PARTNER', '파트너 싱글 재킷', 89000, '/api/product-images/p-outer-001/0.svg', '입점 판매자 등록 승인 대기 상품입니다.', 'PENDING', NOW());
 
 INSERT IGNORE INTO commerce_records (domain_type, owner_key, record_key, status, payload_json, created_at) VALUES
-('COUPON', 'GLOBAL', 'coupon-welcome-10', 'ISSUED', '{"title":"웰컴 10% 쿠폰","discount":"10%"}', NOW()),
-('MILEAGE', 'member@vulshop.local', 'mileage-seed-001', 'EARNED', '{"amount":18400,"reason":"초기 적립"}', NOW()),
-('ORDER', 'member@vulshop.local', 'ORDER-20260506-001', 'IN_DELIVERY', '{"total":89000,"items":"p-outer-001:1"}', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-('VULN_DISCOVERY', 'GLOBAL', 'xss:seed-001', 'FOUND', '{"bucket":"xss"}', NOW()),
-('VULN_DISCOVERY', 'GLOBAL', 'jwt-auth:seed-001', 'FOUND', '{"bucket":"jwt-auth"}', NOW());
+('COUPON', 'user@vul.com', 'coupon-user-welcome-10', 'ISSUED', '{"couponId":"cp-welcome-10","title":"웰컴 10% 쿠폰","discountRate":10,"minimumOrderAmount":30000,"expiresAt":"2026-06-30","used":false}', NOW()),
+('COUPON', 'user@vul.com', 'coupon-user-free-ship', 'ISSUED', '{"couponId":"cp-free-ship","title":"무료배송 쿠폰","discountAmount":3000,"minimumOrderAmount":10000,"expiresAt":"2026-06-15","used":false}', NOW()),
+('MILEAGE', 'user@vul.com', 'mileage-user-001', 'EARNED', '{"amount":18400,"reason":"가입 및 구매 적립","balance":18400}', NOW()),
+('ORDER', 'user@vul.com', 'ORDER-USER-DELIVERED-001', 'DELIVERED', '{"userEmail":"user@vul.com","receiverName":"일반 사용자 테스트","address":"서울특별시 성동구 고객센터","paymentMethod":"card","registeredCard":"****-****-****-1234","productId":"p-outer-001","productName":"에센셜 코듀로이 집업 가디건 브라운","productImage":"/api/product-images/p-outer-001/0.svg","brand":"AURORA","size":"M","quantity":1,"total":42300,"couponDiscount":4230,"paymentTotal":38070,"chargedAmount":38070,"deliveryCompany":"CJ대한통운","trackingNumber":"5849-1204-7721","status":"DELIVERED"}', DATE_SUB(NOW(), INTERVAL 4 DAY)),
+('ORDER', 'user@vul.com', 'ORDER-USER-SHIPPING-001', 'IN_DELIVERY', '{"userEmail":"user@vul.com","receiverName":"일반 사용자 테스트","address":"서울특별시 성동구 고객센터","paymentMethod":"bank","depositConfirmed":true,"productId":"p-sneakers-003","productName":"스탠다드 캔버스 테크 스니커즈 크림","productImage":"/api/product-images/p-sneakers-003/0.svg","brand":"ORDINARY","size":"270","quantity":1,"total":67900,"couponDiscount":0,"paymentTotal":67900,"chargedAmount":67900,"deliveryCompany":"한진택배","trackingNumber":"4331-8820-1350","status":"IN_DELIVERY"}', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+('CS_INQUIRY', 'user@vul.com', 'CS-USER-001', 'PENDING', '{"userEmail":"user@vul.com","title":"무통장 입금 확인 문의","body":"입금 완료 확인을 눌렀는데 주문 상태가 언제 바뀌는지 궁금합니다.","answer":"","category":"payment"}', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
+('CS_INQUIRY', 'user@vul.com', 'CS-USER-002', 'ANSWERED', '{"userEmail":"user@vul.com","title":"배송지 변경 가능 여부","body":"상품 준비 전이면 배송지를 변경할 수 있나요?","answer":"상품 준비 단계 전까지 고객센터에서 배송지 변경을 도와드릴 수 있습니다.","category":"delivery"}', DATE_SUB(NOW(), INTERVAL 2 DAY));
+
+INSERT IGNORE INTO commerce_records (domain_type, owner_key, record_key, status, payload_json, created_at) VALUES
+('INVENTORY', 'warehouse-main', 'inventory-outer-001', 'LOW_STOCK', '{"productId":"p-outer-001","productName":"에센셜 코듀로이 집업 가디건 브라운","stock":8,"warehouse":"성수 1센터","safeStock":20}', NOW()),
+('INVENTORY', 'warehouse-main', 'inventory-top-001', 'ACTIVE', '{"productId":"p-top-001","productName":"모던 수피마 베이직 티셔츠 화이트","stock":142,"warehouse":"성수 1센터","safeStock":30}', NOW()),
+('INVENTORY', 'warehouse-sub', 'inventory-sneakers-001', 'ACTIVE', '{"productId":"p-sneakers-003","productName":"스탠다드 캔버스 테크 스니커즈 크림","stock":54,"warehouse":"이천 2센터","safeStock":15}', NOW()),
+('EMPLOYEE', 'staff-cs@vul.com', 'employee-cs-001', 'ACTIVE', '{"email":"staff-cs@vul.com","name":"CS 운영자","team":"고객센터","role":"CS_MANAGER"}', NOW()),
+('EMPLOYEE', 'staff-ops@vul.com', 'employee-ops-001', 'ACTIVE', '{"email":"staff-ops@vul.com","name":"운영 관리자","team":"운영","role":"OPS_MANAGER"}', NOW()),
+('USER_ANALYTICS', 'GLOBAL', 'analytics-user-search-001', 'ACTIVE', '{"metric":"검색 전환","count":328,"period":"2026-05-07","segment":"비로그인"}', NOW()),
+('USER_ANALYTICS', 'GLOBAL', 'analytics-user-cart-001', 'ACTIVE', '{"metric":"장바구니 전환","count":74,"period":"2026-05-07","segment":"회원"}', NOW()),
+('ROLE_POLICY', 'admin', 'role-policy-admin-001', 'ACTIVE', '{"role":"ADMIN","permissions":["USER_WRITE","PRODUCT_APPROVE","CS_ANSWER","SYSTEM_READ"]}', NOW()),
+('ROLE_POLICY', 'admin', 'role-policy-partner-001', 'ACTIVE', '{"role":"SELLER","permissions":["PRODUCT_APPLY","ORDER_STATUS","SETTLEMENT_READ"]}', NOW()),
+('SECURITY_SETTING', 'admin', 'security-setting-jwt-001', 'WEAK', '{"key":"JWT_SECRET","value":"vulshop-secret","note":"진단용 유추 가능한 키"}', NOW()),
+('SECURITY_SETTING', 'admin', 'security-setting-upload-001', 'WEAK', '{"key":"UPLOAD_VALIDATION","value":"extension-check-disabled","note":"진단용 파일 업로드 약한 검증"}', NOW()),
+('SELLER_ORDER', 'part@vul.com', 'seller-order-part-001', 'PAYMENT_COMPLETED', '{"orderNo":"202605070001","productName":"파트너 싱글 재킷","quantity":2,"amount":178000,"deliveryCompany":"CJ대한통운","trackingNumber":"710245902184"}', NOW()),
+('SELLER_SETTLEMENT', 'part@vul.com', 'seller-settlement-part-001', 'READY', '{"settlementNo":"SETTLE-202605-001","amount":151300,"fee":26700,"period":"2026-05-01~2026-05-07"}', NOW()),
+('EVENT', 'admin', 'partner-notice-202605', 'ACTIVE', '{"title":"파트너 운영 공지","eventType":"PARTNER_NOTICE","reward":"대표 이미지와 재고 수량을 최신 상태로 유지해 주세요.","startAt":"2026-05-07","endAt":"2026-05-31"}', NOW());

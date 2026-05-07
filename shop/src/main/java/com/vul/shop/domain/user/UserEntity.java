@@ -63,6 +63,12 @@ public class UserEntity {
 		this.passwordHash = passwordHash;
 	}
 
+	public void updateProfile(String name, String phone, String address) {
+		this.name = name;
+		this.phone = phone;
+		this.address = address;
+	}
+
 	public Long getId() {
 		return id;
 	}
