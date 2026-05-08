@@ -541,7 +541,19 @@ function App() {
 
   React.useEffect(() => {
     installDiscoveryFetchMonitor();
-    window.vulshopFound = (bucketKey = 'xss', signal = 'manual-xss-callback') => reportDiscovery(bucketKey, signal);
+    window.vulshopFound = (vulnIdOrBucket = 'xss', signal = 'manual-xss-callback') => {
+      if (/^VULN-\d+$/i.test(String(vulnIdOrBucket))) {
+        return fetch('/api/easter-egg/xss-probe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vuln: vulnIdOrBucket }),
+        }).then(r => r.json()).then(d => {
+          if (d?.data?.newlyFound) window.dispatchEvent(new CustomEvent('vulshop:fanfare', { detail: d.data }));
+          return d?.data;
+        });
+      }
+      return reportDiscovery(vulnIdOrBucket, signal);
+    };
     const listener = (event) => {
       setFanfare(event.detail);
       window.setTimeout(() => setFanfare(null), 2800);
@@ -1458,7 +1470,7 @@ function ProductDetail({ product, catalogProducts = [], navigate, addToCart, qui
 
   React.useEffect(() => {
     if (dangerousPayloadPattern.test(previewHtml || '') || dangerousPayloadPattern.test(hashPreviewHtml || '')) {
-      reportDiscovery('xss', 'dom-xss-product-detail').catch(() => {});
+      window.vulshopFound('VULN-009');
     }
   }, [previewHtml, hashPreviewHtml]);
 
@@ -1732,7 +1744,7 @@ function ProductReviewSection({ product, reviews: initialReviews = [] }) {
       setFile(null);
       setMessage('리뷰가 등록되었습니다.');
       if (dangerousPayloadPattern.test(body)) {
-        reportDiscovery('xss', 'stored-xss-review').catch(() => {});
+        window.vulshopFound('VULN-006');
       }
     } catch (error) {
       setMessage(`리뷰 등록 실패: ${error.message}`);
@@ -3057,7 +3069,7 @@ function CsPage({ navigate, user }) {
       setAttachment(null);
       setAttachmentPreview(null);
       if (dangerousPayloadPattern.test(form.title) || dangerousPayloadPattern.test(form.body) || dangerousPayloadPattern.test(attachment?.name || '')) {
-        reportDiscovery('xss', 'stored-xss-cs-inquiry').catch(() => {});
+        window.vulshopFound('VULN-007');
       }
       navigate('/cs/my');
     } catch (error) {
@@ -3796,7 +3808,7 @@ function CommunityWritePage({ setCommunityPosts, navigate, user }) {
       setPreview('');
       setServerImage('');
       if (dangerousPayloadPattern.test(body)) {
-        reportDiscovery('xss', 'stored-xss-community').catch(() => {});
+        window.vulshopFound('VULN-005');
       }
       navigate('/community');
     } catch (error) {
@@ -3905,13 +3917,39 @@ function EmptyState({ title, action, onClick }) {
 
 function RobotsProgressPage() {
   const [progress, setProgress] = useState(null);
+  const [challenges, setChallenges] = useState([]);
+  const [filter, setFilter] = useState({ bucket: 'all', severity: 'all', status: 'all' });
 
   React.useEffect(() => {
     fetch('/api/easter-egg/progress')
-      .then((response) => response.json())
+      .then((r) => r.json())
       .then((payload) => setProgress(payload.data))
       .catch(() => setProgress({ found: 0, total: 50, buckets: [] }));
+    fetch('/api/easter-egg/challenges')
+      .then((r) => r.json())
+      .then((payload) => setChallenges(payload.data || []))
+      .catch(() => {});
   }, []);
+
+  const filtered = challenges.filter((c) =>
+    (filter.bucket === 'all' || c.bucketKey === filter.bucket) &&
+    (filter.severity === 'all' || c.severity?.toLowerCase() === filter.severity) &&
+    (filter.status === 'all' || (filter.status === 'found') === c.discovered)
+  );
+
+  const bucketOptions = [
+    ['sqli', 'SQL Injection'],
+    ['xss', 'XSS'],
+    ['idor', 'IDOR'],
+    ['access-control', 'Access Control'],
+    ['file-upload', 'File Upload'],
+    ['jwt-auth', 'JWT / Auth'],
+    ['ssrf', 'SSRF'],
+    ['csrf', 'CSRF'],
+    ['business-logic', 'Business Logic'],
+    ['info-disclosure', 'Info Disclosure'],
+    ['coupon-payment', 'Coupon / Payment'],
+  ];
 
   return (
     <section className="commercePage">
@@ -3932,6 +3970,45 @@ function RobotsProgressPage() {
             <progress max={bucket.total} value={bucket.found}></progress>
           </article>
         ))}
+      </div>
+      <div className="challengesSection">
+        <div className="challengesHeader">
+          <h2>개별 취약점 목록</h2>
+          <span className="challengesSummary">
+            {challenges.filter((c) => c.discovered).length} / {challenges.length} 발견
+          </span>
+        </div>
+        <div className="challengesFilter">
+          <select value={filter.bucket} onChange={(e) => setFilter((f) => ({ ...f, bucket: e.target.value }))}>
+            <option value="all">모든 카테고리</option>
+            {bucketOptions.map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+          <select value={filter.severity} onChange={(e) => setFilter((f) => ({ ...f, severity: e.target.value }))}>
+            <option value="all">모든 심각도</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <select value={filter.status} onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}>
+            <option value="all">전체</option>
+            <option value="found">발견됨</option>
+            <option value="unfound">미발견</option>
+          </select>
+        </div>
+        <div className="challengesList">
+          {filtered.map((c) => (
+            <div key={c.id} className={`challengeRow${c.discovered ? ' discovered' : ''}`}>
+              <span className="vulnBadge">{c.id}</span>
+              <span className="challengeTitle">{c.title}</span>
+              <span className={`severityTag severity${c.severity}`}>{c.severity}</span>
+              <span className="difficultyTag">{c.difficulty}</span>
+              <span className="discoveredIcon">{c.discovered ? '✓' : '○'}</span>
+            </div>
+          ))}
+          {filtered.length === 0 && <p className="challengesEmpty">표시할 취약점이 없습니다.</p>}
+        </div>
       </div>
     </section>
   );

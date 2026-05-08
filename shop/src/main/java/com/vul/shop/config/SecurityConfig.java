@@ -68,12 +68,15 @@ public class SecurityConfig {
 			String origin = request.getHeader("Origin");
 			if (origin != null && (origin.endsWith(".shop.com") || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:"))) {
 				discovery.discover("info-disclosure", "weak-cors-configuration");
+				discovery.discoverChallenge("VULN-037");
 			}
 			discovery.discover("info-disclosure", "response-header-disclosure");
+			discovery.discoverChallenge("VULN-043");
 			if (path.startsWith("/api/users/me") || path.startsWith("/api/orders/checkout")) {
 				discovery.discover("info-disclosure", "weak-cache-control");
 			}
 			discovery.discover("info-disclosure", "clickjacking-frame-options-disabled");
+			discovery.discoverChallenge("VULN-040");
 			response.setHeader("Server", "Apache Tomcat/10.1.54");
 			response.setHeader("X-Powered-By", "Spring Boot 3.5.14");
 			response.setHeader("X-Application-Context", "vul-shop:8100");
@@ -83,6 +86,18 @@ public class SecurityConfig {
 			}
 			if ("OPTIONS".equalsIgnoreCase(request.getMethod()) && (path.startsWith("/api/products/") || path.startsWith("/api/orders/"))) {
 				response.setHeader("Allow", "GET,POST,PUT,DELETE,OPTIONS");
+			}
+			String authHeader = request.getHeader("Authorization");
+			if (authHeader != null && authHeader.startsWith("Bearer ")) {
+				String[] jwtChunks = authHeader.substring(7).split("\\.");
+				if (jwtChunks.length >= 1) {
+					try {
+						String jwtHeader = new String(Base64.getUrlDecoder().decode(jwtChunks[0]), StandardCharsets.UTF_8);
+						if (jwtHeader.toLowerCase().contains("\"alg\":\"none\"")) {
+							discovery.discoverChallenge("VULN-019");
+						}
+					} catch (IllegalArgumentException ignored) {}
+				}
 			}
 			if (path.startsWith("/api/admin") && diagnosticAdminBypass(request)) {
 				discovery.discover("access-control", "admin-auth-bypass-debug-header");

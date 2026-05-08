@@ -3,13 +3,17 @@ package com.vul.shop.api;
 import com.vul.shop.common.ApiResponse;
 import com.vul.shop.domain.commerce.CommerceRecordRepository;
 import com.vul.shop.vulnerability.VulnerabilityCatalogService;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -48,7 +52,27 @@ public class EasterEggController {
 	@PostMapping("/progress/{bucketKey}/discover")
 	public ApiResponse<Map<String, Object>> discover(@PathVariable String bucketKey, @RequestBody(required = false) Map<String, Object> request) {
 		String signal = request == null ? "" : String.valueOf(request.getOrDefault("signal", ""));
+		if (signal.matches("(?i)VULN-\\d+")) {
+			return ApiResponse.ok("Challenge IDs cannot be submitted directly. Exploit the vulnerability.", Map.of());
+		}
 		return ApiResponse.accepted("Discovery progress updated.", discoveryService.discover(bucketKey, signal));
+	}
+
+	// 1×1 transparent PNG — works as <img src="/api/easter-egg/xss-probe?vuln=VULN-006">
+	private static final byte[] PIXEL_PNG = Base64.getDecoder().decode(
+		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
+
+	@GetMapping("/xss-probe")
+	public ResponseEntity<byte[]> xssProbeGet(@RequestParam String vuln,
+			@RequestParam(defaultValue = "") String sig) {
+		discoveryService.discoverChallenge(vuln);
+		return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(PIXEL_PNG);
+	}
+
+	@PostMapping("/xss-probe")
+	public ApiResponse<Map<String, Object>> xssProbePost(@RequestBody(required = false) Map<String, Object> body) {
+		String vuln = body == null ? "" : String.valueOf(body.getOrDefault("vuln", ""));
+		return ApiResponse.accepted("XSS probe received.", discoveryService.discoverChallenge(vuln));
 	}
 
 	@GetMapping("/challenges")

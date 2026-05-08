@@ -96,7 +96,6 @@ public class CustomerApiController {
 		String email = String.valueOf(request.getOrDefault("email", request.getOrDefault("username", "")));
 		String password = String.valueOf(request.getOrDefault("password", ""));
 		String redirectTo = String.valueOf(request.getOrDefault("next", request.getOrDefault("redirectTo", "/mypage")));
-		discovery.maybeDiscoverChallenge("VULN-001", VulnerabilityDiscoveryService.looksSqlInjected(email) || VulnerabilityDiscoveryService.looksSqlInjected(password));
 		discovery.maybeDiscoverChallenge("VULN-034", redirectTo.startsWith("http://") || redirectTo.startsWith("https://") || redirectTo.startsWith("//"));
 		long startedAt = System.nanoTime();
 		boolean accountExists = users.findByEmail(email).isPresent();
@@ -108,10 +107,19 @@ public class CustomerApiController {
 		boolean md5Authenticated = users.findByEmail(email)
 			.filter(user -> user.getPasswordHash().equals(md5(password + user.getId())))
 			.isPresent();
+		// VULN-001: SQL bypass confirmed when rows returned for an email not in the DB, or rows returned without a matching real account
+		boolean sqlBypassSucceeded = !rows.isEmpty() && !md5Authenticated && !accountExists;
+		discovery.maybeDiscoverChallenge("VULN-001", sqlBypassSucceeded);
 		String authenticatedEmail = rows.isEmpty() && !md5Authenticated ? email : rows.isEmpty() ? email : String.valueOf(rows.get(0).get("EMAIL") == null ? rows.get(0).get("email") : rows.get(0).get("EMAIL"));
 		if (rows.isEmpty() && !md5Authenticated) {
-			discovery.discoverChallenge("VULN-033");
+			long previousFailures = commerceRecords.findByDomainTypeAndOwnerKeyOrderByCreatedAtDesc("LOGIN_FAILURE", email).size();
+			if (previousFailures >= 2) {
+				discovery.discoverChallenge("VULN-033");
+			}
 			commerceRecords.save(CommerceRecordEntity.create("LOGIN_FAILURE", email, "login-failure-" + Instant.now().toEpochMilli(), "FAILED_NO_LOCK", Map.of("email", email, "diagnosticNote", "VULN-033 records failures but never locks the account.")));
+		}
+		if (!rows.isEmpty() || md5Authenticated) {
+			discovery.discoverChallenge("VULN-050");
 		}
 		String fixedSessionId = existingSessionId(servletRequest);
 		discovery.maybeDiscoverChallenge("VULN-021", fixedSessionId != null);
@@ -279,13 +287,24 @@ public class CustomerApiController {
 		@RequestParam(defaultValue = "asc") String order
 	) {
 		if (!blank(keyword)) {
-			discovery.maybeDiscoverChallenge("VULN-002", VulnerabilityDiscoveryService.looksSqlInjected(keyword) || VulnerabilityDiscoveryService.looksSqlInjected(order));
 			discovery.maybeDiscoverChallenge("VULN-008", VulnerabilityDiscoveryService.looksXss(keyword));
 			// VULN-002: keyword는 single-quote 이스케이프로 보호, order 파라미터는 ORDER BY에 직접 삽입
+			boolean orderInjected = VulnerabilityDiscoveryService.looksSqlInjected(order);
 			String safeKeyword = keyword.replace("'", "''");
 			String sql = "select product_code as id, category, brand, name, price, original_price as originalPrice, discount_rate as discount, rating, review_count as reviews, ranking as rank, description from products where name like '%" + safeKeyword + "%' or brand like '%" + safeKeyword + "%' or category like '%" + safeKeyword + "%' order by " + order;
-			List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
-			return accepted("Product listing API surface is ready.", rows.stream().map(this::productRowMap).toList());
+			long queryStart = System.nanoTime();
+			try {
+				List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
+				long elapsed = (System.nanoTime() - queryStart) / 1_000_000;
+				// time-based SQLi (e.g. SLEEP): query took unusually long
+				boolean timeBased = elapsed > 2500 && orderInjected;
+				discovery.maybeDiscoverChallenge("VULN-002", orderInjected || timeBased);
+				return accepted("Product listing API surface is ready.", rows.stream().map(this::productRowMap).toList());
+			} catch (org.springframework.dao.DataAccessException e) {
+				// ORDER BY injection broke the query — the SQL reached the DB layer
+				discovery.maybeDiscoverChallenge("VULN-002", orderInjected);
+				return accepted("Product listing API surface is ready.", List.of());
+			}
 		}
 		List<ProductEntity> result = products.findAllByOrderByRankingAsc().stream()
 			.filter(product -> blank(category) || product.getCategory().equalsIgnoreCase(category))
@@ -369,7 +388,12 @@ public class CustomerApiController {
 		discovery.maybeDiscoverChallenge("VULN-036", request.containsKey("useMileage"));
 		int requestedQuantity = intValue(request.get("quantity"), 1);
 		int stockBefore = intValue(request.get("stockBefore"), 1);
-		discovery.maybeDiscoverChallenge("VULN-030", requestedQuantity > stockBefore);
+		String checkoutProductId = String.valueOf(request.getOrDefault("productId", "unknown"));
+		long recentDeductions = commerceRecords.findByDomainTypeOrderByCreatedAtDesc("INVENTORY_DEDUCTION").stream()
+			.filter(r -> r.getRecordKey().startsWith("stock-deduction-" + checkoutProductId + "-"))
+			.filter(r -> r.getCreatedAt() != null && java.time.Duration.between(r.getCreatedAt(), LocalDateTime.now()).toMillis() < 2000)
+			.count();
+		discovery.maybeDiscoverChallenge("VULN-030", recentDeductions > 0);
 		payload.put("stockBefore", stockBefore);
 		payload.put("requestedQuantity", requestedQuantity);
 		payload.put("stockAfter", stockBefore - requestedQuantity);
@@ -434,15 +458,20 @@ public class CustomerApiController {
 
 	@GetMapping("/orders/{orderId}")
 	public ApiResponse<List<Map<String, Object>>> orderDetail(@PathVariable String orderId, HttpServletRequest servletRequest) {
-		discovery.maybeDiscoverChallenge("VULN-003", VulnerabilityDiscoveryService.looksSqlInjected(orderId));
 		// VULN-003: orderId가 SQL에 직접 삽입 — UNION SELECT 가능
 		// 에러는 suppressed 처리 → 컬럼 수를 trial-and-error로 파악해야 함 (난이도 상)
+		boolean orderIdInjected = VulnerabilityDiscoveryService.looksSqlInjected(orderId);
 		String sql = "select * from commerce_records where domain_type = 'ORDER' and record_key = '" + orderId + "'";
 		try {
 			List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
-			discovery.maybeDiscoverChallenge("VULN-011", rows.stream().anyMatch(row -> differentOwner(servletRequest, stringColumn(row, "owner_key"))));
+			// UNION injection succeeded if rows contain data from a different owner
+			boolean unionSucceeded = rows.stream().anyMatch(row -> differentOwner(servletRequest, stringColumn(row, "owner_key")));
+			discovery.maybeDiscoverChallenge("VULN-003", orderIdInjected || unionSucceeded);
+			discovery.maybeDiscoverChallenge("VULN-011", unionSucceeded);
 			return accepted("Order detail API surface is ready.", rows);
 		} catch (Exception ignored) {
+			// SQL error proves the injection reached the DB layer (e.g. wrong column count in UNION)
+			discovery.maybeDiscoverChallenge("VULN-003", orderIdInjected);
 			return accepted("Order detail API surface is ready.", List.of());
 		}
 	}
@@ -495,7 +524,7 @@ public class CustomerApiController {
 		payload.put("usesBefore", alreadyUsed);
 		String forwardedFor = servletRequest.getHeader("X-Forwarded-For");
 		discovery.maybeDiscoverChallenge("VULN-035", forwardedFor != null && !forwardedFor.isBlank());
-		discovery.discoverChallenge("VULN-029");
+		discovery.maybeDiscoverChallenge("VULN-029", alreadyUsed > 0);
 		payload.put("rateLimitKey", forwardedFor == null ? "direct" : forwardedFor);
 		payload.put("rateLimitBypassed", forwardedFor != null && !forwardedFor.isBlank());
 		diagnosticDelay(180);
@@ -539,8 +568,10 @@ public class CustomerApiController {
 	public ApiResponse<Map<String, Object>> previewEventBanner(@RequestBody Map<String, Object> request) {
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		String imageUrl = String.valueOf(request.getOrDefault("imageUrl", request.getOrDefault("url", "")));
-		discovery.maybeDiscoverChallenge("VULN-025", VulnerabilityDiscoveryService.looksSsrf(imageUrl));
-		payload.put("ssrfProbe", fetchUrlProbe(imageUrl));
+		Map<String, Object> ssrfProbe = fetchUrlProbe(imageUrl);
+		// VULN-025: confirmed when server actually received an HTTP response (status present) from an internal address
+		discovery.maybeDiscoverChallenge("VULN-025", ssrfProbe.containsKey("status") && VulnerabilityDiscoveryService.looksSsrf(imageUrl));
+		payload.put("ssrfProbe", ssrfProbe);
 		payload.put("diagnosticNote", "VULN-025 fetches the supplied external image URL server-side.");
 		return accepted("External banner preview API surface is ready.", payload);
 	}

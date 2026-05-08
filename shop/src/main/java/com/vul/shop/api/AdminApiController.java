@@ -155,8 +155,9 @@ public class AdminApiController {
 	public ApiResponse<Map<String, Object>> createProduct(@RequestBody Map<String, Object> request) {
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		String imageUrl = String.valueOf(request.getOrDefault("imageUrl", request.getOrDefault("bannerUrl", "")));
-		discovery.maybeDiscoverChallenge("VULN-025", VulnerabilityDiscoveryService.looksSsrf(imageUrl));
-		payload.put("ssrfProbe", fetchUrlProbe(imageUrl));
+		Map<String, Object> ssrfProbe1 = fetchUrlProbe(imageUrl);
+		discovery.maybeDiscoverChallenge("VULN-025", ssrfProbe1.containsKey("status") && VulnerabilityDiscoveryService.looksSsrf(imageUrl));
+		payload.put("ssrfProbe", ssrfProbe1);
 		payload.put("diagnosticNote", "VULN-025 admin product management fetches supplied image URL server-side.");
 		ProductEntity product = saveProductFromPayload(payload);
 		CommerceRecordEntity record = commerceRecords.save(CommerceRecordEntity.create("ADMIN_PRODUCT_CHANGE", "admin", "admin-product-" + product.getProductCode(), "CREATED", payload));
@@ -175,8 +176,9 @@ public class AdminApiController {
 			payload.put("diagnosticNote", "VULN-018 stores admin product upload with the original filename and no extension/MIME validation.");
 		}
 		String imageUrl = String.valueOf(payload.getOrDefault("imageUrl", payload.getOrDefault("bannerUrl", "")));
-		discovery.maybeDiscoverChallenge("VULN-025", VulnerabilityDiscoveryService.looksSsrf(imageUrl));
-		payload.put("ssrfProbe", fetchUrlProbe(imageUrl));
+		Map<String, Object> ssrfProbe2 = fetchUrlProbe(imageUrl);
+		discovery.maybeDiscoverChallenge("VULN-025", ssrfProbe2.containsKey("status") && VulnerabilityDiscoveryService.looksSsrf(imageUrl));
+		payload.put("ssrfProbe", ssrfProbe2);
 		ProductEntity product = saveProductFromPayload(payload);
 		CommerceRecordEntity record = commerceRecords.save(CommerceRecordEntity.create("ADMIN_PRODUCT_CHANGE", "admin", "admin-product-" + product.getProductCode(), "CREATED", payload));
 		return ApiResponse.accepted("Admin product create request recorded.", Map.of("product", product, "audit", record));
@@ -329,8 +331,9 @@ public class AdminApiController {
 	public ApiResponse<CommerceRecordEntity> createPromotionEvent(@RequestBody Map<String, Object> request) {
 		Map<String, Object> payload = new LinkedHashMap<>(request);
 		String bannerUrl = String.valueOf(request.getOrDefault("bannerUrl", request.getOrDefault("imageUrl", request.getOrDefault("url", ""))));
-		discovery.maybeDiscoverChallenge("VULN-025", VulnerabilityDiscoveryService.looksSsrf(bannerUrl));
-		payload.put("ssrfProbe", fetchUrlProbe(bannerUrl));
+		Map<String, Object> ssrfProbe3 = fetchUrlProbe(bannerUrl);
+		discovery.maybeDiscoverChallenge("VULN-025", ssrfProbe3.containsKey("status") && VulnerabilityDiscoveryService.looksSsrf(bannerUrl));
+		payload.put("ssrfProbe", ssrfProbe3);
 		payload.put("diagnosticNote", "VULN-025 admin event management fetches supplied banner URL server-side.");
 		return ApiResponse.accepted("Admin event management API surface is ready.", commerceRecords.save(CommerceRecordEntity.create("EVENT", "admin", "event-" + System.currentTimeMillis(), "ACTIVE", payload)));
 	}
@@ -352,6 +355,7 @@ public class AdminApiController {
 
 	@GetMapping("/system/audit-logs")
 	public ApiResponse<List<CommerceRecordEntity>> auditLogs() {
+		discovery.discoverChallenge("VULN-045");
 		return ApiResponse.accepted("Audit log data loaded.", commerceRecords.findByDomainTypeOrderByCreatedAtDesc("AUDIT_LOG"));
 	}
 
